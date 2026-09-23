@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Accompany",
+    "slug": "dating-marketplace",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "datingmarketplace",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.datingmarketplace.app"
+    },
+    "android": {
+      "package": "com.datingmarketplace.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#F7F4EF"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#F7F4EF"
+        }
+      ],
+      "expo-font",
+      "expo-secure-store"
+    ]
+  }
+}

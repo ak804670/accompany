@@ -1,0 +1,80 @@
+ALTER TABLE acc.otp_verifications
+  ADD COLUMN IF NOT EXISTS purpose text NOT NULL DEFAULT 'otp',
+  ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'pending';
+
+ALTER TABLE acc.otp_verifications
+  DROP CONSTRAINT IF EXISTS otp_verifications_purpose_check;
+
+ALTER TABLE acc.otp_verifications
+  ADD CONSTRAINT otp_verifications_purpose_check CHECK (purpose IN ('otp'));
+
+ALTER TABLE acc.otp_verifications
+  DROP CONSTRAINT IF EXISTS otp_verifications_status_check;
+
+ALTER TABLE acc.otp_verifications
+  ADD CONSTRAINT otp_verifications_status_check CHECK (status IN ('pending', 'verified', 'expired', 'locked'));
+
+CREATE SCHEMA IF NOT EXISTS acc;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS acc.outbox_events (
+  id UUID DEFAULT gen_random_uuid(),
+  aggregate_type TEXT NOT NULL,
+  aggregate_id UUID NOT NULL,
+  event_type TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  retry_count INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at TIMESTAMPTZ,
+  idempotency_key TEXT,
+  available_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE acc.outbox_events
+  ADD COLUMN IF NOT EXISTS idempotency_key TEXT,
+  ADD COLUMN IF NOT EXISTS available_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_outbox_events_idempotency_key
+  ON acc.outbox_events (idempotency_key)
+  WHERE idempotency_key IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_outbox_events_available
+  ON acc.outbox_events (available_at)
+  WHERE status = 'pending';
+
+CREATE TABLE IF NOT EXISTS acc.communication_logs (
+  id UUID DEFAULT gen_random_uuid(),
+  user_id UUID,
+  channel TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  purpose TEXT NOT NULL,
+  recipient TEXT NOT NULL,
+  provider_message_id TEXT,
+  provider_status TEXT,
+  status TEXT NOT NULL,
+  error_code TEXT,
+  error_message TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+  idempotency_key TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sent_at TIMESTAMPTZ,
+  delivered_at TIMESTAMPTZ,
+  failed_at TIMESTAMPTZ,
+  CONSTRAINT pk_communication_logs PRIMARY KEY (id),
+  CONSTRAINT uq_communication_logs_idempotency_key UNIQUE (idempotency_key),
+  CONSTRAINT chk_communication_logs_channel CHECK (channel IN ('email', 'sms')),
+  CONSTRAINT chk_communication_logs_purpose CHECK (
+    purpose IN ('otp', 'welcome', 'security', 'notification', 'transactional')
+  ),
+  CONSTRAINT chk_communication_logs_status CHECK (
+    status IN ('queued', 'sending', 'sent', 'delivered', 'failed')
+  )
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_communication_logs_provider_message
+  ON acc.communication_logs (provider, provider_message_id)
+  WHERE provider_message_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_communication_logs_channel_created
+  ON acc.communication_logs (channel, created_at DESC);

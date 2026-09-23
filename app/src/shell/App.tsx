@@ -1,0 +1,57 @@
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
+import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
+import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
+import { Newsreader_400Regular } from '@expo-google-fonts/newsreader/400Regular';
+import { Newsreader_500Medium } from '@expo-google-fonts/newsreader/500Medium';
+import { PortalHost } from '@rn-primitives/portal';
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+import { AppToastHost } from '@/components/design-system/AppToast';
+import { AuthProvider } from '@/features/auth';
+import { RootNavigator } from '@/navigation';
+import { AppErrorBoundary } from '@/shell/AppErrorBoundary';
+import { reportError } from '@/services/monitoring/report-error';
+import { ThemeProvider } from '@/theme';
+
+export function App() {
+  const [fontsLoaded, fontError] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Newsreader_400Regular,
+    Newsreader_500Medium,
+  });
+
+  useEffect(() => {
+    if (fontError) {
+      reportError({ error: fontError });
+    }
+
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync().catch(() => undefined);
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
+  return (
+    <AppErrorBoundary>
+      <ThemeProvider>
+        <SafeAreaProvider>
+          <AuthProvider>
+            <RootNavigator />
+            <AppToastHost />
+            <PortalHost />
+          </AuthProvider>
+        </SafeAreaProvider>
+      </ThemeProvider>
+    </AppErrorBoundary>
+  );
+}
