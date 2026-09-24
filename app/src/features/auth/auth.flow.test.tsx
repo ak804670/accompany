@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 
 import { AuthProvider } from '@/features/auth/AuthProvider';
 import { authService } from '@/features/auth/services/auth.service';
+import { ProfileProvider } from '@/features/profile/ProfileProvider';
 import { RootNavigator } from '@/navigation';
 import { ApiError } from '@/services/api/types';
 import { ThemeProvider } from '@/theme';
@@ -24,6 +25,23 @@ jest.mock('@/features/auth/services/auth.service', () => {
   };
 });
 
+jest.mock('@/features/profile/services/profile.service', () => ({
+  profileService: {
+    get: jest.fn(async () => ({
+      id: 'profile-1',
+      displayName: 'Anish',
+      dateOfBirth: '1998-04-02',
+      bio: null,
+      languagePreferences: [],
+      step: 'complete',
+      interests: [],
+      media: [],
+      complete: true,
+    })),
+    failureMessage: () => 'Could not save your profile.',
+  },
+}));
+
 const requestOtp = authService.requestOtp as jest.MockedFunction<typeof authService.requestOtp>;
 const verifyOtp = authService.verifyOtp as jest.MockedFunction<typeof authService.verifyOtp>;
 const currentSession = authService.currentSession as jest.MockedFunction<typeof authService.currentSession>;
@@ -34,7 +52,9 @@ function renderApp() {
   return render(
     <ThemeProvider>
       <AuthProvider>
-        <RootNavigator />
+        <ProfileProvider>
+          <RootNavigator />
+        </ProfileProvider>
       </AuthProvider>
     </ThemeProvider>
   );
@@ -190,6 +210,7 @@ describe('authentication flow', () => {
     currentSession.mockResolvedValue({ user: { id: 'user-1' } });
     await renderApp();
 
+    await fireEvent.press(await screen.findByRole('tab', { name: 'Profile' }));
     await fireEvent.press(await screen.findByRole('button', { name: 'Log out' }));
 
     expect(logout).toHaveBeenCalled();

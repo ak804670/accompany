@@ -77,8 +77,6 @@ function mapOtp(row: {
   expires_at: Date;
   attempt_count: number;
   verified_at: Date | null;
-  purpose: 'otp';
-  status: OtpRecord['status'];
 }): OtpRecord {
   return {
     id: row.id,
@@ -88,8 +86,8 @@ function mapOtp(row: {
     expiresAt: row.expires_at,
     attemptCount: row.attempt_count,
     verifiedAt: row.verified_at,
-    purpose: row.purpose,
-    status: row.status,
+    purpose: 'otp',
+    status: row.verified_at ? 'verified' : 'pending',
   };
 }
 
@@ -138,9 +136,9 @@ export class PgAuthRepository implements AuthRepository {
   async insertOtp(input: NewOtp, db: SqlClient = this.pool): Promise<OtpRecord> {
     const id = randomUUID();
     const result = await db.query(
-      `INSERT INTO otp_verifications (id, destination, channel, otp_hash, expires_at, purpose, status)
-       VALUES ($1, $2, $3, $4, $5, 'otp', 'pending')
-       RETURNING id, destination, channel, otp_hash, expires_at, attempt_count, verified_at, purpose, status`,
+      `INSERT INTO acc.otp_verifications (id, destination, channel, otp_hash, expires_at)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, destination, channel, otp_hash, expires_at, attempt_count, verified_at`,
       [id, input.destination, input.channel, input.otpHash, input.expiresAt],
     );
     return mapOtp(result.rows[0] as Parameters<typeof mapOtp>[0]);
@@ -148,8 +146,8 @@ export class PgAuthRepository implements AuthRepository {
 
   async findLatestOtp(destination: string, channel: OtpChannel): Promise<OtpRecord | null> {
     const result = await this.pool.query(
-      `SELECT id, destination, channel, otp_hash, expires_at, attempt_count, verified_at, purpose, status
-       FROM otp_verifications
+      `SELECT id, destination, channel, otp_hash, expires_at, attempt_count, verified_at
+       FROM acc.otp_verifications
        WHERE destination = $1 AND channel = $2
        ORDER BY created_at DESC
        LIMIT 1`,
@@ -160,19 +158,19 @@ export class PgAuthRepository implements AuthRepository {
 
   async saveOtp(record: OtpRecord): Promise<void> {
     await this.pool.query(
-      `UPDATE otp_verifications
-       SET attempt_count = $2, verified_at = $3, expires_at = $4, status = $5
+      `UPDATE acc.otp_verifications
+       SET attempt_count = $2, verified_at = $3, expires_at = $4
        WHERE id = $1`,
-      [record.id, record.attemptCount, record.verifiedAt, record.expiresAt, record.status],
+      [record.id, record.attemptCount, record.verifiedAt, record.expiresAt],
     );
   }
 
   async findUserByIdentity(provider: 'phone' | 'email', subject: string): Promise<UserRecord | null> {
     const result = await this.pool.query(
-      `SELECT u.id, u.status, u.created_at, u.updated_at, u.last_login_at
-       FROM auth_identities i
-       JOIN users u ON u.id = i.user_id
-       WHERE i.provider = $1 AND i.provider_subject = $2`,
+      `SELECT u.id, u.status, u.created_at, u.updated_at, u.last_seen_at AS last_login_at
+       FROM acc.m_auth_identities i
+       JOIN acc.m_users u ON u.id = i.user_id
+       WHERE i.provider = $1 AND i.provider_subject = $2 AND u.deleted_at IS NULL`,
       [provider, subject],
     );
     return result.rows[0] ? mapUser(result.rows[0]) : null;
@@ -181,8 +179,8 @@ export class PgAuthRepository implements AuthRepository {
   async createUser(status: UserStatus = 'active'): Promise<UserRecord> {
     const id = randomUUID();
     const result = await this.pool.query(
-      `INSERT INTO users (id, status) VALUES ($1, $2)
-       RETURNING id, status, created_at, updated_at, last_login_at`,
+      `INSERT INTO acc.m_users (id, status) VALUES ($1, $2)
+       RETURNING id, status, created_at, updated_at, last_seen_at AS last_login_at`,
       [id, status],
     );
     return mapUser(result.rows[0]);
@@ -196,22 +194,22 @@ export class PgAuthRepository implements AuthRepository {
     phone: string | null;
   }): Promise<void> {
     await this.pool.query(
-      `INSERT INTO auth_identities (id, user_id, provider, provider_subject, email, phone)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+      `INSERT INTO acc.m_auth_identities (id, user_id, provider, provider_subject, email, phone, verified_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
       [randomUUID(), input.userId, input.provider, input.subject, input.email, input.phone],
     );
   }
 
   async touchLogin(userId: string, at: Date): Promise<void> {
     await this.pool.query(
-      `UPDATE users SET last_login_at = $2, updated_at = $2 WHERE id = $1`,
+      `UPDATE acc.m_users SET last_seen_at = $2 WHERE id = $1 AND deleted_at IS NULL`,
       [userId, at],
     );
   }
 
   async upsertDevice(userId: string, device: DeviceInput, seenAt: Date): Promise<string> {
     const result = await this.pool.query(
-      `INSERT INTO devices (id, user_id, device_identifier, platform, app_version, last_seen_at)
+      `INSERT INTO acc.m_devices (id, user_id, device_identifier, platform, app_version, last_seen_at)
        VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (device_identifier)
        DO UPDATE SET user_id = EXCLUDED.user_id, platform = EXCLUDED.platform,
@@ -231,7 +229,7 @@ export class PgAuthRepository implements AuthRepository {
 
   async createSession(input: NewSession): Promise<SessionRecord> {
     const result = await this.pool.query(
-      `INSERT INTO sessions (id, user_id, refresh_token_hash, device_id, platform, expires_at)
+      `INSERT INTO acc.sessions (id, user_id, refresh_token_hash, device_id, platform, expires_at)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, user_id, refresh_token_hash, device_id, platform, expires_at, revoked_at, created_at, last_used_at`,
       [
@@ -249,7 +247,7 @@ export class PgAuthRepository implements AuthRepository {
   async findSessionById(id: string): Promise<SessionRecord | null> {
     const result = await this.pool.query(
       `SELECT id, user_id, refresh_token_hash, device_id, platform, expires_at, revoked_at, created_at, last_used_at
-       FROM sessions WHERE id = $1`,
+       FROM acc.sessions WHERE id = $1`,
       [id],
     );
     return result.rows[0] ? mapSession(result.rows[0]) : null;
@@ -258,7 +256,7 @@ export class PgAuthRepository implements AuthRepository {
   async findSessionByRefreshHash(hash: string): Promise<SessionRecord | null> {
     const result = await this.pool.query(
       `SELECT id, user_id, refresh_token_hash, device_id, platform, expires_at, revoked_at, created_at, last_used_at
-       FROM sessions WHERE refresh_token_hash = $1`,
+       FROM acc.sessions WHERE refresh_token_hash = $1`,
       [hash],
     );
     return result.rows[0] ? mapSession(result.rows[0]) : null;
@@ -266,7 +264,7 @@ export class PgAuthRepository implements AuthRepository {
 
   async rotateSession(id: string, refreshTokenHash: string, expiresAt: Date, usedAt: Date): Promise<void> {
     await this.pool.query(
-      `UPDATE sessions
+      `UPDATE acc.sessions
        SET refresh_token_hash = $2, expires_at = $3, last_used_at = $4
        WHERE id = $1 AND revoked_at IS NULL`,
       [id, refreshTokenHash, expiresAt, usedAt],
@@ -275,14 +273,15 @@ export class PgAuthRepository implements AuthRepository {
 
   async revokeSession(id: string, at: Date): Promise<void> {
     await this.pool.query(
-      `UPDATE sessions SET revoked_at = $2, last_used_at = $2 WHERE id = $1 AND revoked_at IS NULL`,
+      `UPDATE acc.sessions SET revoked_at = $2, last_used_at = $2 WHERE id = $1 AND revoked_at IS NULL`,
       [id, at],
     );
   }
 
   async findUserById(id: string): Promise<UserRecord | null> {
     const result = await this.pool.query(
-      `SELECT id, status, created_at, updated_at, last_login_at FROM users WHERE id = $1`,
+      `SELECT id, status, created_at, updated_at, last_seen_at AS last_login_at
+       FROM acc.m_users WHERE id = $1 AND deleted_at IS NULL`,
       [id],
     );
     return result.rows[0] ? mapUser(result.rows[0]) : null;

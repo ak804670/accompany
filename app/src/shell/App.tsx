@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppToastHost } from '@/components/design-system/AppToast';
 import { AuthProvider } from '@/features/auth';
+import { ProfileProvider } from '@/features/profile/ProfileProvider';
 import { RootNavigator } from '@/navigation';
 import { AppErrorBoundary } from '@/shell/AppErrorBoundary';
 import { reportError } from '@/services/monitoring/report-error';
@@ -46,9 +47,11 @@ export function App() {
       <ThemeProvider>
         <SafeAreaProvider>
           <AuthProvider>
+            <ProfileProvider>
             <RootNavigator />
             <AppToastHost />
             <PortalHost />
+            </ProfileProvider>
           </AuthProvider>
         </SafeAreaProvider>
       </ThemeProvider>

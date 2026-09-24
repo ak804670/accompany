@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react-native';
 
 import { AuthProvider } from '@/features/auth';
+import { ProfileProvider } from '@/features/profile/ProfileProvider';
 import { RootNavigator } from '@/navigation';
 import { ThemeProvider } from '@/theme';
 
@@ -9,7 +10,9 @@ describe('RootNavigator', () => {
     await render(
       <ThemeProvider>
         <AuthProvider>
-          <RootNavigator />
+          <ProfileProvider>
+            <RootNavigator />
+          </ProfileProvider>
         </AuthProvider>
       </ThemeProvider>
     );

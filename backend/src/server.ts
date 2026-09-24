@@ -11,11 +11,29 @@ import { CommunicationService } from './modules/communications/CommunicationServ
 import { createEmailProvider, createSmsProvider } from './modules/communications/providerFactory.js';
 import { PgCommunicationStore } from './modules/communications/store.js';
 import { CommunicationWorker } from './modules/communications/worker.js';
-import { logger } from './utils/logger.js';
+import { LocalMediaStorage } from './modules/profile/media-storage.js';
+import { PgProfileRepository } from './modules/profile/profile.repository.js';
+import { ProfileService } from './modules/profile/profile.service.js';
+import { createAuditLog } from './modules/audit/audit-log.js';
+import { logger, setAuditSink } from './utils/logger.js';
+import path from 'node:path';
 
 const config = readConfig();
 const communicationConfig = readCommunicationConfig(config.nodeEnv);
 const pool = createPool(config.databaseUrl);
+const audit = createAuditLog(pool);
+setAuditSink((level, event, fields) => {
+  const userId = typeof fields.userId === 'string' ? fields.userId : null;
+  const sessionId = typeof fields.sessionId === 'string' ? fields.sessionId : null;
+  const requestId = typeof fields.requestId === 'string' ? fields.requestId : null;
+  audit({
+    action: event,
+    entityType: entityTypeFor(event),
+    entityId: sessionId ?? userId ?? requestId,
+    actorUserId: userId,
+    metadata: { level, ...fields },
+  });
+});
 const redis = new Redis(config.redisUrl, { maxRetriesPerRequest: 2 });
 const communicationStore = new PgCommunicationStore(pool);
 const emailProvider = createEmailProvider(communicationConfig, config.nodeEnv);
@@ -42,8 +60,23 @@ const authService = new AuthService({
   config,
 });
 
+const media = new LocalMediaStorage(path.resolve(import.meta.dirname, '../storage/profile-media'));
+const profileService = new ProfileService(
+  authService,
+  new PgProfileRepository(pool),
+  media,
+  {
+    maxBytes: positive('PROFILE_IMAGE_MAX_SIZE_BYTES', 4_000_000),
+    maxPhotos: positive('MAX_PROFILE_PHOTOS', 10),
+  },
+);
+
 const app = createApp({
   authService,
+  profileService,
+  pool,
+  media,
+  audit,
   nodeEnv: config.nodeEnv,
   communicationWebhooks: {
     store: communicationStore,
@@ -71,6 +104,28 @@ const poll = setInterval(() => {
   });
 }, communicationConfig.pollIntervalMs);
 poll.unref();
+
+function positive(name: string, fallback: number): number {
+  const parsed = Number(process.env[name]);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function entityTypeFor(event: string): string {
+  const name = event.toLowerCase();
+  if (name.includes('session') || name.includes('logout')) {
+    return 'session';
+  }
+  if (name.includes('otp')) {
+    return 'otp';
+  }
+  if (name.includes('profile')) {
+    return 'profile';
+  }
+  if (name.includes('communication')) {
+    return 'communication';
+  }
+  return 'system';
+}
 
 async function shutdown() {
   clearInterval(poll);

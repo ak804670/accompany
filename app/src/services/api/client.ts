@@ -75,7 +75,7 @@ export function createApiClient(deps: ApiClientDeps): ApiClient {
   }
 
   async function request<T>(
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
     body?: unknown,
     init?: ApiRequestInit,
@@ -85,10 +85,13 @@ export function createApiClient(deps: ApiClientDeps): ApiClient {
       throw new ApiError('EXPO_PUBLIC_API_BASE_URL is not configured', 0, null);
     }
 
-    const headers = new Headers(init?.headers);
+    const { rawBody, contentType, auth: _auth, headers: initHeaders, ...fetchInit } = init ?? {};
+    const headers = new Headers(initHeaders);
     headers.set('Accept', 'application/json');
 
-    if (body !== undefined && !headers.has('Content-Type')) {
+    if (rawBody) {
+      headers.set('Content-Type', contentType ?? 'application/octet-stream');
+    } else if (body !== undefined && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
     }
 
@@ -101,10 +104,10 @@ export function createApiClient(deps: ApiClientDeps): ApiClient {
     }
 
     const response = await fetchFn(resolveUrl(deps.baseUrl, path), {
-      ...init,
+      ...fetchInit,
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: rawBody ? rawBody : body !== undefined ? JSON.stringify(body) : undefined,
     });
 
     if (response.status === 401 && useAuth && !retried) {
@@ -135,6 +138,9 @@ export function createApiClient(deps: ApiClientDeps): ApiClient {
     get: (path, init) => request('GET', path, undefined, init),
     post: (path, body, init) => request('POST', path, body, init),
     put: (path, body, init) => request('PUT', path, body, init),
+    patch: (path, body, init) => request('PATCH', path, body, init),
+    upload: (path, body, contentType, init) =>
+      request('POST', path, undefined, { ...init, rawBody: body, contentType }),
     delete: (path, init) => request('DELETE', path, undefined, init),
   };
 }

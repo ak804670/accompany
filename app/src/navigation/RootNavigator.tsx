@@ -3,13 +3,16 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 
+import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
 import { useSession } from '@/features/auth';
+import { OnboardingNavigator } from '@/features/profile/OnboardingNavigator';
+import { useProfile } from '@/features/profile/hooks/useProfile';
 import type { AuthStackParamList, AuthenticatedStackParamList } from '@/features/auth/navigation';
 import { LoginScreen } from '@/features/auth/screens/LoginScreen';
 import { VerifyOtpScreen } from '@/features/auth/screens/VerifyOtpScreen';
 import { WelcomeScreen } from '@/features/auth/screens/WelcomeScreen';
-import { AuthenticatedHomeScreen } from '@/navigation/AuthenticatedHomeScreen';
+import { MainShell } from '@/features/shell/MainShell';
 import { NAV_THEME, palette, useTheme } from '@/theme';
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -24,6 +27,35 @@ function SessionChecking() {
       </View>
       <AppText variant="h1">Accompany</AppText>
     </View>
+  );
+}
+
+function ProfileGate({ colors }: { colors: { background: string } }) {
+  const profileState = useProfile();
+  const screenOptions = {
+    headerShown: false,
+    contentStyle: { backgroundColor: colors.background },
+  };
+
+  if (profileState.isLoading || !profileState.profile) {
+    return (
+      <View testID="profile-checking" className="flex-1 justify-end bg-background px-lg pb-3xl">
+        <AppText variant="h1">Accompany</AppText>
+        {profileState.error ? (
+          <AppButton className="mt-lg" onPress={() => void profileState.refresh()}>Try again</AppButton>
+        ) : null}
+      </View>
+    );
+  }
+
+  if (!profileState.profile.complete) {
+    return <OnboardingNavigator />;
+  }
+
+  return (
+    <AppStack.Navigator screenOptions={screenOptions}>
+      <AppStack.Screen name="Home" component={MainShell} />
+    </AppStack.Navigator>
   );
 }
 
@@ -42,9 +74,7 @@ export function RootNavigator() {
       {session.isChecking ? (
         <SessionChecking />
       ) : session.isAuthenticated ? (
-        <AppStack.Navigator screenOptions={screenOptions}>
-          <AppStack.Screen name="Home" component={AuthenticatedHomeScreen} />
-        </AppStack.Navigator>
+        <ProfileGate colors={colors} />
       ) : (
         <AuthStack.Navigator screenOptions={screenOptions}>
           <AuthStack.Screen name="Welcome" component={WelcomeScreen} />

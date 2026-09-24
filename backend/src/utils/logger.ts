@@ -27,20 +27,30 @@ function sanitize(fields: Record<string, unknown>): Record<string, unknown> {
   return safe;
 }
 
+type AuditSink = (level: 'info' | 'error', event: string, fields: Record<string, unknown>) => void;
+
+let auditSink: AuditSink | null = null;
+
+export function setAuditSink(sink: AuditSink | null): void {
+  auditSink = sink;
+}
+
 function write(level: 'info' | 'error', event: string, fields: Record<string, unknown>) {
+  const safe = sanitize(fields);
   const line = JSON.stringify({
     level,
     event,
     time: new Date().toISOString(),
-    ...sanitize(fields),
+    ...safe,
   });
 
   if (level === 'error') {
     console.error(line);
-    return;
+  } else {
+    console.log(line);
   }
 
-  console.log(line);
+  auditSink?.(level, event, safe);
 }
 
 export const logger = {
