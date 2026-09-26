@@ -7,9 +7,10 @@ type CallRequestDialogProps = {
   kind: CallKind | null;
   name: string;
   onClose: () => void;
+  onConfirm: () => void;
 };
 
-export function CallRequestDialog({ kind, name, onClose }: CallRequestDialogProps) {
+export function CallRequestDialog({ kind, name, onClose, onConfirm }: CallRequestDialogProps) {
   const label = kind === 'video' ? 'video' : 'voice';
 
   return (
@@ -23,7 +24,7 @@ export function CallRequestDialog({ kind, name, onClose }: CallRequestDialogProp
         </DialogHeader>
         <DialogFooter>
           <AppButton variant="outline" onPress={onClose}>Not now</AppButton>
-          <AppButton onPress={onClose}>Request</AppButton>
+          <AppButton onPress={onConfirm}>Request</AppButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

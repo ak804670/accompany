@@ -25,7 +25,26 @@ export const profilePatchSchema = z
 
 export const interestsSchema = z.object({
   interestIds: z.array(z.string().uuid()).max(12),
+  names: z.array(z.string().trim().min(2).max(40)).max(12).optional(),
 });
+
+const rate = z.number().int().min(0).max(100_000);
+
+export const ratesSchema = z
+  .object({
+    chat: rate.optional(),
+    audio: rate.optional(),
+    video: rate.optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, { message: 'Nothing to update.' });
+
+export const mediaOrderSchema = z.object({
+  mediaIds: z.array(z.string().uuid()).min(1).max(10),
+});
+
+export function authoritativeRate(stored: number | null, _supplied: unknown): number | null {
+  return stored;
+}
 
 export function assertAdultDateOfBirth(value: string, today = new Date()): void {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);

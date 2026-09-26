@@ -13,6 +13,7 @@ import { createCommunicationWebhookRouter } from './modules/communications/webho
 import type { MediaStorage } from './modules/profile/media-storage.js';
 import type { AuditEntry } from './modules/audit/audit-log.js';
 import type { CommunicationStore } from './modules/communications/store.js';
+import type { Router } from 'express';
 
 export type AppDependencies = {
   authService: AuthService;
@@ -26,6 +27,8 @@ export type AppDependencies = {
   audit?: (entry: AuditEntry) => void;
   pool?: import('pg').Pool;
   media?: MediaStorage;
+  calls?: { router: Router; webhook: Router };
+  wallet?: { router: Router; webhook: Router };
 };
 
 export function createApp(deps: AppDependencies) {
@@ -35,6 +38,9 @@ export function createApp(deps: AppDependencies) {
   app.set('trust proxy', deps.nodeEnv === 'development' ? false : 1);
   app.use((request, response, next) => {
     const mediaUpload = request.method === 'POST' && request.path === '/v1/profile/media';
+    if (request.method === 'POST' && (request.path === '/webhooks/livekit' || request.path === '/webhooks/payments')) {
+      return express.raw({ type: '*/*', limit: '1mb' })(request, response, next);
+    }
     return express.json({ limit: mediaUpload ? '4mb' : '16kb' })(request, response, next);
   });
   app.use(requestContext);
@@ -69,6 +75,14 @@ export function createApp(deps: AppDependencies) {
   });
 
   app.use('/v1/auth', createAuthRouter(deps.authService));
+  if (deps.calls) {
+    app.use('/v1', deps.calls.router);
+    app.use('/webhooks', deps.calls.webhook);
+  }
+  if (deps.wallet) {
+    app.use('/v1', deps.wallet.router);
+    app.use('/webhooks', deps.wallet.webhook);
+  }
   if (deps.pool) {
     app.use('/v1', createShellRouter(deps.authService, deps.pool, deps.media));
     app.use('/v1/conversations', createConversationRouter(deps.authService, deps.pool));

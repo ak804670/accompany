@@ -7,7 +7,7 @@ import type { MediaStorage } from './media-storage.js';
 import { detectImage } from './media-storage.js';
 import type { ProfileRepository } from './profile.repository.js';
 import type { OnboardingStep, ProfileRecord } from './profile.types.js';
-import { assertAdultDateOfBirth, basicsSchema, interestsSchema, profilePatchSchema } from './profile.validation.js';
+import { assertAdultDateOfBirth, basicsSchema, interestsSchema, mediaOrderSchema, profilePatchSchema, ratesSchema } from './profile.validation.js';
 import { logger } from '../../utils/logger.js';
 
 const defaultMediaLimits = { maxBytes: 4_000_000, maxPhotos: 10 };
@@ -98,15 +98,40 @@ export class ProfileService {
       throw new ProfileError('PROFILE_NOT_FOUND', 404, 'Create your profile first.');
     }
     try {
-      await this.repository.replaceInterests(userId, parsed.interestIds);
+      await this.repository.replaceInterests(userId, parsed.interestIds, parsed.names ?? []);
     } catch (error) {
       if (error instanceof Error && error.message === 'unknown-interest') {
         throw new ProfileError('VALIDATION_ERROR', 400, 'Choose interests from the list.');
+      }
+      if (error instanceof Error && error.message === 'invalid-interest') {
+        throw new ProfileError('VALIDATION_ERROR', 400, 'Use a shorter interest name without symbols.');
       }
       throw error;
     }
     const saved = await this.repository.saveProfile(userId, { step: advanceStep(current.step, 'interests') });
     return withComplete(saved);
+  }
+
+  async rates(userId: string) {
+    return this.repository.getRates(userId);
+  }
+
+  async saveRates(userId: string, body: unknown) {
+    const parsed = ratesSchema.parse(body);
+    const current = await this.repository.getProfile(userId);
+    if (!current) {
+      throw new ProfileError('PROFILE_NOT_FOUND', 404, 'Create your profile first.');
+    }
+    return this.repository.saveRates(userId, parsed);
+  }
+
+  async reorderMedia(userId: string, body: unknown): Promise<ProfileRecord> {
+    const parsed = mediaOrderSchema.parse(body);
+    const moved = await this.repository.reorderMedia(userId, parsed.mediaIds);
+    if (!moved) {
+      throw new ProfileError('VALIDATION_ERROR', 400, 'Choose photos from your profile.');
+    }
+    return this.get(userId);
   }
 
   async addMedia(userId: string, bytes: Buffer, _declaredType: string | undefined): Promise<ProfileRecord> {

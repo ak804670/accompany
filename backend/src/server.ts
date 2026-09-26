@@ -1,6 +1,15 @@
 import { Redis } from 'ioredis';
 
 import { createApp } from './app.js';
+import { readCallConfig } from './modules/calls/call-config.js';
+import { createCallRouter, createLiveKitWebhook } from './modules/calls/call.routes.js';
+import { CallService } from './modules/calls/call.service.js';
+import { PgCallStore } from './modules/calls/call.store.js';
+import { LiveKitProvider } from './modules/calls/livekit-provider.js';
+import { createNotificationQueue, LogNotificationProvider, startNotificationWorker } from './modules/calls/notifications.js';
+import { ManualPaymentProvider } from './modules/wallet/payment-provider.js';
+import { createPaymentWebhook, createWalletRouter } from './modules/wallet/wallet.routes.js';
+import { WalletService } from './modules/wallet/wallet.service.js';
 import { readCommunicationConfig } from './config/communication.js';
 import { readConfig } from './config/env.js';
 import { createPool } from './infrastructure/database/pool.js';
@@ -71,6 +80,32 @@ const profileService = new ProfileService(
   },
 );
 
+const callConfig = readCallConfig(process.env, config.nodeEnv);
+const callStore = new PgCallStore(pool);
+const notifications = createNotificationQueue(config.redisUrl);
+const callService = callConfig
+  ? new CallService(
+      callStore,
+      new LiveKitProvider(callConfig.livekitUrl, callConfig.livekitApiKey, callConfig.livekitApiSecret),
+      callConfig,
+      new RedisRateLimiter(redis),
+      (message) => notifications.enqueue(message).then(() => undefined),
+      redis,
+    )
+  : null;
+const notificationWorker = callService
+  ? startNotificationWorker(config.redisUrl, callStore, new LogNotificationProvider())
+  : null;
+
+const payments = new ManualPaymentProvider(process.env.PAYMENT_WEBHOOK_SECRET ?? '');
+const wallet = new WalletService(
+  pool,
+  payments,
+  (message) => notifications.enqueue(message).then(() => undefined),
+  positive('WITHDRAWAL_MIN_COINS', 100),
+  positive('COIN_PAYOUT_PAISE', 100),
+);
+
 const app = createApp({
   authService,
   profileService,
@@ -78,6 +113,10 @@ const app = createApp({
   media,
   audit,
   nodeEnv: config.nodeEnv,
+  wallet: { router: createWalletRouter(authService, wallet, process.env.ADMIN_API_KEY), webhook: createPaymentWebhook(wallet, payments) },
+  calls: callService && callConfig
+    ? { router: createCallRouter(authService, callService, callStore), webhook: createLiveKitWebhook(callConfig, callService, callStore) }
+    : undefined,
   communicationWebhooks: {
     store: communicationStore,
     mailjetSecret: communicationConfig.mailjetWebhookSecret,
@@ -97,6 +136,15 @@ const server = app.listen(config.port, () => {
 void communicationStore.recoverInterrupted().catch((error: unknown) => {
   logger.error('communication recovery failed', { message: error instanceof Error ? error.message : 'failed' });
 });
+
+const callSweep = callService
+  ? setInterval(() => {
+      callService.sweep().catch((error: unknown) => {
+        logger.error('call sweep failed', { message: error instanceof Error ? error.message : 'failed' });
+      });
+    }, 5000)
+  : null;
+callSweep?.unref();
 
 const poll = setInterval(() => {
   worker.processAvailable().catch((error: unknown) => {
@@ -127,9 +175,16 @@ function entityTypeFor(event: string): string {
   return 'system';
 }
 
+let stopping = false;
+
 async function shutdown() {
+  if (stopping) return;
+  stopping = true;
+  if (callSweep) clearInterval(callSweep);
   clearInterval(poll);
-  server.close();
+  await notificationWorker?.close();
+  await notifications.close();
+  await new Promise<void>((resolve) => server.close(() => resolve()));
   await pool.end();
   redis.disconnect();
 }

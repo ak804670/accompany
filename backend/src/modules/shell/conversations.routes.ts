@@ -5,6 +5,7 @@ import type { Pool } from 'pg';
 
 import { AuthError } from '../auth/auth.errors.js';
 import type { AuthService } from '../auth/auth.service.js';
+import { canCreateChatRequest, canRespondToRequest, canSendMessage, type ConversationStatus } from './conversation-rules.js';
 
 const pageSize = 30;
 
@@ -28,11 +29,16 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
       const id = await userId(request.header('authorization'));
       const cursor = typeof request.query.cursor === 'string' ? request.query.cursor : null;
       const result = await pool.query(
-        `SELECT c.id, other_user.user_id AS person_id, pr.display_name, last_message.content, last_message.created_at,
+        `SELECT c.id, c.status, c.created_by, other_user.user_id AS person_id, pr.display_name,
+                last_message.content, COALESCE(last_message.created_at, c.created_at) AS created_at,
                 COALESCE(unread.count, 0) AS unread_count,
-                (presence.last_seen_at > NOW() - INTERVAL '45 seconds') AS online
+                (presence.last_seen_at > NOW() - INTERVAL '45 seconds') AS online,
+                EXISTS (
+                  SELECT 1 FROM acc.blocks b
+                  WHERE b.user_id = $1 AND b.blocked_user_id = other_user.user_id
+                ) AS blocked_by_viewer
          FROM acc.p_conversation_participants mine
-         JOIN acc.conversations c ON c.id = mine.conversation_id AND c.status = 'active'
+         JOIN acc.conversations c ON c.id = mine.conversation_id AND c.status IN ('pending', 'active')
          JOIN acc.p_conversation_participants other_user
            ON other_user.conversation_id = c.id AND other_user.user_id <> $1 AND other_user.left_at IS NULL
          JOIN acc.m_profiles pr ON pr.user_id = other_user.user_id
@@ -50,8 +56,8 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
          ) unread ON TRUE
          LEFT JOIN acc.presence presence ON presence.user_id = other_user.user_id
          WHERE mine.user_id = $1 AND mine.left_at IS NULL
-           AND ($2::timestamptz IS NULL OR last_message.created_at < $2::timestamptz OR last_message.created_at IS NULL)
-         ORDER BY last_message.created_at DESC NULLS LAST
+           AND ($2::timestamptz IS NULL OR COALESCE(last_message.created_at, c.created_at) < $2::timestamptz)
+         ORDER BY COALESCE(last_message.created_at, c.created_at) DESC
          LIMIT $3`,
         [id, cursor, pageSize + 1],
       );
@@ -59,6 +65,7 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
       const unread = await pool.query(
         `SELECT COUNT(*)::int AS unread
          FROM acc.messages m
+         JOIN acc.conversations c ON c.id = m.conversation_id AND c.status = 'active'
          JOIN acc.p_conversation_participants mine
            ON mine.conversation_id = m.conversation_id AND mine.user_id = $1 AND mine.left_at IS NULL
          LEFT JOIN acc.conversation_reads reads
@@ -68,8 +75,8 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
         [id],
       );
       response.json({
-        conversations: rows.map(mapConversation),
-        nextCursor: result.rows.length > pageSize ? rows.at(-1)?.created_at?.toISOString?.() ?? null : null,
+        conversations: rows.map((row) => mapConversation(row, id)),
+        nextCursor: result.rows.length > pageSize ? rows.at(-1)?.created_at?.toISOString?.() ?? rows.at(-1)?.updated_at ?? null : null,
         unread: Number(unread.rows[0]?.unread ?? 0),
       });
     } catch (error) {
@@ -81,21 +88,49 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
     try {
       const id = await userId(request.header('authorization'));
       const personId = typeof request.body?.personId === 'string' ? request.body.personId : '';
-      if (!personId || personId === id) {
-        response.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Choose someone to talk with.' } });
+      const message = typeof request.body?.message === 'string' ? request.body.message.trim() : '';
+      const decision = canCreateChatRequest({
+        sameUser: !personId || personId === id,
+        blocked: false,
+        existingStatus: null,
+      });
+      if (!decision.allow) {
+        response.status(decision.status).json({ error: { code: 'VALIDATION_ERROR', message: decision.message } });
         return;
       }
+      if (!message || message.length > 500) {
+        response.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Write one message to send your request.' } });
+        return;
+      }
+      const blocked = await isBlocked(pool, id, personId);
       const existing = await pool.query(
-        `SELECT c.id
+        `SELECT c.id, c.status
          FROM acc.conversations c
-         JOIN acc.p_conversation_participants a ON a.conversation_id = c.id AND a.user_id = $1
-         JOIN acc.p_conversation_participants b ON b.conversation_id = c.id AND b.user_id = $2
-         WHERE c.conversation_type = 'direct' AND c.status = 'active'
+         JOIN acc.p_conversation_participants a ON a.conversation_id = c.id AND a.user_id = $1 AND a.left_at IS NULL
+         JOIN acc.p_conversation_participants b ON b.conversation_id = c.id AND b.user_id = $2 AND b.left_at IS NULL
+         WHERE c.conversation_type = 'direct' AND c.status IN ('pending', 'active')
          LIMIT 1`,
         [id, personId],
       );
-      if (existing.rows[0]) {
-        response.json({ conversationId: existing.rows[0].id });
+      const gate = canCreateChatRequest({
+        sameUser: false,
+        blocked,
+        existingStatus: (existing.rows[0]?.status as ConversationStatus | undefined) ?? null,
+      });
+      if (!gate.allow) {
+        if (existing.rows[0] && gate.status === 409) {
+          response.json({ conversationId: existing.rows[0].id, status: existing.rows[0].status });
+          return;
+        }
+        response.status(gate.status).json({ error: { code: 'FORBIDDEN', message: gate.message } });
+        return;
+      }
+      const person = await pool.query(
+        `SELECT 1 FROM acc.m_profiles WHERE user_id = $1 AND deleted_at IS NULL AND profile_status = 'active'`,
+        [personId],
+      );
+      if (!person.rows[0]) {
+        response.status(404).json({ error: { code: 'NOT_FOUND', message: 'This person is not available.' } });
         return;
       }
       const conversationId = randomUUID();
@@ -103,14 +138,19 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
       try {
         await client.query('BEGIN');
         await client.query(
-          `INSERT INTO acc.conversations (id, created_by, status, conversation_type, started_at)
-           VALUES ($1, $2, 'active', 'direct', NOW())`,
+          `INSERT INTO acc.conversations (id, created_by, status, conversation_type)
+           VALUES ($1, $2, 'pending', 'direct')`,
           [conversationId, id],
         );
         await client.query(
           `INSERT INTO acc.p_conversation_participants (conversation_id, user_id, role)
            VALUES ($1, $2, 'owner'), ($1, $3, 'member')`,
           [conversationId, id, personId],
+        );
+        await client.query(
+          `INSERT INTO acc.messages (conversation_id, sender_id, message_type, content, billing_status)
+           VALUES ($1, $2, 'text', $3, 'not_billable')`,
+          [conversationId, id, message],
         );
         await client.query('COMMIT');
       } catch (error) {
@@ -119,7 +159,27 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
       } finally {
         client.release();
       }
-      response.status(201).json({ conversationId });
+      response.status(201).json({ conversationId, status: 'pending' });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/:id/accept', async (request, response, next) => {
+    try {
+      const id = await userId(request.header('authorization'));
+      const outcome = await respond(pool, request.params.id, id, 'active');
+      response.status(outcome.status).json(outcome.body);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/:id/reject', async (request, response, next) => {
+    try {
+      const id = await userId(request.header('authorization'));
+      const outcome = await respond(pool, request.params.id, id, 'rejected');
+      response.status(outcome.status).json(outcome.body);
     } catch (error) {
       next(error);
     }
@@ -129,7 +189,7 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
     try {
       const id = await userId(request.header('authorization'));
       const result = await pool.query(
-        `SELECT c.id, other_user.user_id AS person_id, pr.display_name,
+        `SELECT c.id, c.status, c.created_by, other_user.user_id AS person_id, pr.display_name,
                 (presence.last_seen_at > NOW() - INTERVAL '45 seconds') AS online
          FROM acc.conversations c
          JOIN acc.p_conversation_participants mine
@@ -138,7 +198,7 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
            ON other_user.conversation_id = c.id AND other_user.user_id <> $1 AND other_user.left_at IS NULL
          JOIN acc.m_profiles pr ON pr.user_id = other_user.user_id
          LEFT JOIN acc.presence presence ON presence.user_id = other_user.user_id
-         WHERE c.id = $2 AND c.status = 'active'`,
+         WHERE c.id = $2 AND c.status IN ('pending', 'active', 'rejected')`,
         [id, request.params.id],
       );
       const row = result.rows[0];
@@ -146,12 +206,12 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
         response.status(404).json({ error: { code: 'NOT_FOUND', message: "Couldn't load this conversation" } });
         return;
       }
+      const blocked = await isBlocked(pool, id, row.person_id);
       response.json({
         conversation: {
-          id: row.id,
-          personId: row.person_id,
-          name: String(row.display_name).trim(),
-          online: Boolean(row.online),
+          ...mapConversation(row, id),
+          canMessage: !blocked && row.status === 'active',
+          canRespond: !blocked && row.status === 'pending' && row.created_by !== id,
         },
       });
     } catch (error) {
@@ -195,8 +255,15 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
   router.post('/:id/messages', async (request, response, next) => {
     try {
       const id = await userId(request.header('authorization'));
-      if (!(await isMember(pool, request.params.id, id))) {
-        response.status(404).json({ error: { code: 'NOT_FOUND', message: "Couldn't load this conversation" } });
+      const conversation = await loadConversation(pool, request.params.id, id);
+      const blocked = conversation ? await isBlocked(pool, id, conversation.personId) : false;
+      const decision = canSendMessage({
+        member: Boolean(conversation),
+        blocked,
+        status: conversation?.status ?? null,
+      });
+      if (!decision.allow) {
+        response.status(decision.status).json({ error: { code: 'FORBIDDEN', message: decision.message } });
         return;
       }
       const body = typeof request.body?.body === 'string' ? request.body.body.trim() : '';
@@ -241,6 +308,47 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
   return router;
 }
 
+async function respond(pool: Pool, conversationId: string, userId: string, nextStatus: 'active' | 'rejected') {
+  const conversation = await loadConversation(pool, conversationId, userId);
+  const blocked = conversation ? await isBlocked(pool, userId, conversation.personId) : false;
+  const decision = canRespondToRequest({
+    member: Boolean(conversation),
+    isRecipient: Boolean(conversation && conversation.createdBy !== userId),
+    blocked,
+    status: conversation?.status ?? null,
+  });
+  if (!decision.allow) {
+    return { status: decision.status, body: { error: { code: 'FORBIDDEN', message: decision.message } } };
+  }
+  await pool.query(
+    `UPDATE acc.conversations
+     SET status = $2, started_at = CASE WHEN $2 = 'active' THEN NOW() ELSE started_at END
+     WHERE id = $1 AND status = 'pending'`,
+    [conversationId, nextStatus],
+  );
+  return { status: 200, body: { conversationId, status: nextStatus === 'active' ? 'accepted' : 'rejected' } };
+}
+
+async function loadConversation(pool: Pool, conversationId: string, userId: string) {
+  const result = await pool.query(
+    `SELECT c.status, c.created_by, other_user.user_id AS person_id
+     FROM acc.conversations c
+     JOIN acc.p_conversation_participants mine
+       ON mine.conversation_id = c.id AND mine.user_id = $2 AND mine.left_at IS NULL
+     JOIN acc.p_conversation_participants other_user
+       ON other_user.conversation_id = c.id AND other_user.user_id <> $2 AND other_user.left_at IS NULL
+     WHERE c.id = $1`,
+    [conversationId, userId],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    status: row.status as ConversationStatus,
+    createdBy: String(row.created_by),
+    personId: String(row.person_id),
+  };
+}
+
 async function isMember(pool: Pool, conversationId: string, userId: string) {
   const result = await pool.query(
     `SELECT 1 FROM acc.p_conversation_participants
@@ -250,22 +358,39 @@ async function isMember(pool: Pool, conversationId: string, userId: string) {
   return Boolean(result.rows[0]);
 }
 
+async function isBlocked(pool: Pool, leftUserId: string, rightUserId: string) {
+  const result = await pool.query(
+    `SELECT 1 FROM acc.blocks
+     WHERE (user_id = $1 AND blocked_user_id = $2) OR (user_id = $2 AND blocked_user_id = $1)
+     LIMIT 1`,
+    [leftUserId, rightUserId],
+  );
+  return Boolean(result.rows[0]);
+}
+
 function mapConversation(row: {
   id: string;
+  status: string;
+  created_by: string;
   person_id: string;
   display_name: string;
-  content: string | null;
-  created_at: Date | null;
-  unread_count: number;
+  content?: string | null;
+  created_at?: Date | null;
+  unread_count?: number;
   online: boolean;
-}) {
+  blocked_by_viewer?: boolean;
+}, viewerId: string) {
+  const status = row.status === 'active' ? 'accepted' : row.status;
   return {
     id: row.id,
     personId: row.person_id,
     name: String(row.display_name).trim(),
-    preview: row.content,
-    updatedAt: row.created_at,
-    unreadCount: Number(row.unread_count),
-    online: Boolean(row.online),
+    preview: row.content ?? null,
+    updatedAt: row.created_at ?? null,
+    unreadCount: Number(row.unread_count ?? 0),
+    online: Boolean(row.online) && !row.blocked_by_viewer,
+    blocked: Boolean(row.blocked_by_viewer),
+    status,
+    incoming: row.created_by !== viewerId && row.status === 'pending',
   };
 }

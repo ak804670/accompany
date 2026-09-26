@@ -68,6 +68,31 @@ export function createProfileRouter(service: ProfileService) {
     }
   });
 
+  router.get('/rates', async (request, response, next) => {
+    try {
+      response.json({ rates: await service.rates(await userId(request)) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.put('/rates', async (request, response, next) => {
+    try {
+      response.json({ rates: await service.saveRates(await userId(request), request.body) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.put('/media/order', async (request, response, next) => {
+    try {
+      const profile = await service.reorderMedia(await userId(request), request.body);
+      response.json({ profile });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.put('/interests', async (request, response, next) => {
     try {
       const profile = await service.replaceInterests(await userId(request), request.body);

@@ -29,7 +29,7 @@ export function ChatListItem({ item, onPress }: { item: ConversationSummary; onP
           </AppText>
           <UnreadBadge count={item.unreadCount} />
         </View>
-        {item.online ? <OnlineStatus online /> : null}
+        {item.blocked ? <AppText variant="caption" tone="muted">Blocked</AppText> : item.online ? <OnlineStatus online /> : null}
       </View>
     </Pressable>
   );

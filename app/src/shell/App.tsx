@@ -8,6 +8,9 @@ import { PortalHost } from '@rn-primitives/portal';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+
+import { callManager } from '@/features/calls/call-manager';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppToastHost } from '@/components/design-system/AppToast';
@@ -29,6 +32,11 @@ export function App() {
   });
 
   useEffect(() => {
+    callManager.start();
+    return () => callManager.stop();
+  }, []);
+
+  useEffect(() => {
     if (fontError) {
       reportError({ error: fontError });
     }
@@ -45,6 +53,7 @@ export function App() {
   return (
     <AppErrorBoundary>
       <ThemeProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <AuthProvider>
             <ProfileProvider>
@@ -54,6 +63,7 @@ export function App() {
             </ProfileProvider>
           </AuthProvider>
         </SafeAreaProvider>
+        </GestureHandlerRootView>
       </ThemeProvider>
     </AppErrorBoundary>
   );

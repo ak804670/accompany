@@ -1,89 +1,102 @@
-import { useCallback, useEffect, useState } from 'react';
-import { FlatList, RefreshControl, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppBottomSheet } from '@/components/design-system/AppBottomSheet';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
-import { OnlinePersonCard } from '@/components/home/OnlinePersonCard';
+import { DiscoveryDeck } from '@/components/home/DiscoveryDeck';
+import { DISCOVERY_RADII_KM } from '@/features/home/discovery';
+import { captureLocation } from '@/features/home/location';
+import { onDiscoveryRefresh } from '@/features/home/discovery-refresh';
+import { peopleService } from '@/features/home/people.service';
+import { useDiscoveryDeck } from '@/features/home/useDiscoveryDeck';
 import { useProfile } from '@/features/profile/hooks/useProfile';
-import { peopleService, type OnlinePerson } from '@/features/home/people.service';
-import { ApiError } from '@/services/api';
-
 type HomeScreenProps = {
   onOpenPerson: (userId: string) => void;
 };
 
-function greeting(name: string): string {
-  const hour = new Date().getHours();
-  const period = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  return `${period}, ${name}`;
-}
-
-function isOffline(error: unknown): boolean {
-  return !(error instanceof ApiError) || error.status === 0;
-}
-
 export function HomeScreen({ onOpenPerson }: HomeScreenProps) {
   const insets = useSafeAreaInsets();
   const { profile } = useProfile();
-  const [people, setPeople] = useState<OnlinePerson[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [offline, setOffline] = useState(false);
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [interestIds, setInterestIds] = useState<string[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [locationNote, setLocationNote] = useState<string | null>(null);
+  const { people, index, setIndex, hasMore, loading, error, retry, refresh } = useDiscoveryDeck(distanceKm, interestIds);
 
-  const load = useCallback(async (next?: string | null, replace = true) => {
-    try {
-      const result = await peopleService.online(next);
-      setPeople((current) => (replace ? result.people : [...current, ...result.people]));
-      setCursor(result.nextCursor);
-      setError(null);
-      setOffline(false);
-    } catch (caught) {
-      const lost = isOffline(caught);
-      setOffline(lost);
-      setError(lost ? "You're offline" : "Couldn't load people");
+  useEffect(() => onDiscoveryRefresh(() => { void refresh(); }), [refresh]);
+
+  async function enableNearby(radius: number) {
+    const location = await captureLocation();
+    if (!location.ok) {
+      setLocationNote(location.message);
+      setDistanceKm(null);
+      return;
     }
-  }, []);
-
-  useEffect(() => {
-    void load(null, true).finally(() => setLoading(false));
-  }, [load]);
-
-  const name = profile?.displayName?.trim() || 'there';
+    setLocationNote(null);
+    await peopleService.saveLocation(location.latitude, location.longitude, true);
+    setDistanceKm(radius);
+    setFiltersOpen(false);
+  }
 
   return (
     <View className="flex-1 bg-background px-lg" style={{ paddingTop: insets.top + 16 }}>
-      <AppText variant="h2">{greeting(name)}</AppText>
-      <AppText variant="bodyM" tone="muted" className="mt-xs">People online now</AppText>
-      {offline ? <AppText className="mt-sm" variant="caption" tone="warning">You're offline</AppText> : null}
+      <View className="flex-row items-center justify-between">
+        <View className="flex-1">
+          <AppText variant="h2">Home</AppText>
+          <AppText variant="bodyM" tone="muted" className="mt-xs">People available now</AppText>
+        </View>
+        <AppButton variant="outline" onPress={() => setFiltersOpen(true)}>Filter</AppButton>
+      </View>
+      {locationNote ? <AppText className="mt-sm" variant="caption" tone="warning">{locationNote}</AppText> : null}
       {loading ? (
-        <View className="mt-xl gap-md">
-          <View className="h-20 rounded-sm bg-muted" />
-          <View className="h-20 rounded-sm bg-muted" />
+        <View className="mt-md gap-sm">
+          <View className="h-72 rounded-md bg-muted" />
+          <View className="h-6 w-32 rounded-sm bg-muted" />
+          <View className="h-4 w-24 rounded-sm bg-muted" />
           <AppText variant="caption" tone="muted">Loading people...</AppText>
         </View>
+      ) : error ? (
+        <View className="mt-xl flex-1 justify-center gap-sm">
+          <AppText variant="h3">Something went wrong.</AppText>
+          <AppText variant="bodyM" tone="muted">{error}</AppText>
+          <AppButton variant="outline" onPress={retry}>Try again</AppButton>
+        </View>
       ) : (
-        <FlatList
-          className="mt-lg"
-          data={people}
-          keyExtractor={(item) => item.userId}
-          contentContainerClassName="gap-md pb-lg"
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(null, true).finally(() => setRefreshing(false)); }} />}
-          onEndReached={() => { if (cursor) void load(cursor, false); }}
-          ListEmptyComponent={
-            <View className="mt-xl gap-sm">
-              <AppText variant="h3">{error ?? 'No one is available right now'}</AppText>
-              <AppText variant="bodyM" tone="muted">
-                {error ? 'Try again in a moment.' : 'Check back soon or explore again in a little while.'}
-              </AppText>
-              {error ? <AppButton variant="outline" onPress={() => void load(null, true)}>Try again</AppButton> : null}
-            </View>
-          }
-          renderItem={({ item }) => <OnlinePersonCard person={item} onPress={() => onOpenPerson(item.userId)} />}
-        />
+        <View className="mt-md min-h-0 flex-1">
+          <DiscoveryDeck people={people} index={index} hasMore={hasMore} onIndex={setIndex} onOpen={onOpenPerson} onAdjustFilters={() => setFiltersOpen(true)} />
+        </View>
       )}
+      <AppBottomSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filter">
+        <AppText variant="label">Distance</AppText>
+        <View className="flex-row flex-wrap gap-sm">
+          <Pressable className={`rounded-full border px-md py-sm ${distanceKm === null ? 'border-primary bg-primary' : 'border-border'}`} onPress={() => { setDistanceKm(null); setFiltersOpen(false); }}>
+            <AppText variant="bodyS" className={distanceKm === null ? 'text-primary-foreground' : ''}>Any distance</AppText>
+          </Pressable>
+          {DISCOVERY_RADII_KM.map((radius) => (
+            <Pressable key={radius} className={`rounded-full border px-md py-sm ${distanceKm === radius ? 'border-primary bg-primary' : 'border-border'}`} onPress={() => void enableNearby(radius)}>
+              <AppText variant="bodyS" className={distanceKm === radius ? 'text-primary-foreground' : ''}>Within {radius} km</AppText>
+            </Pressable>
+          ))}
+        </View>
+        <AppText variant="label">Interests</AppText>
+        <View className="flex-row flex-wrap gap-sm">
+          {(profile?.interests ?? []).map((interest) => {
+            const active = interestIds.includes(interest.id);
+            return (
+              <Pressable
+                key={interest.id}
+                className={`rounded-full border px-md py-sm ${active ? 'border-primary bg-primary' : 'border-border'}`}
+                onPress={() => setInterestIds((current) => active ? current.filter((id) => id !== interest.id) : [...current, interest.id])}
+              >
+                <AppText variant="bodyS" className={active ? 'text-primary-foreground' : ''}>{interest.name}</AppText>
+              </Pressable>
+            );
+          })}
+        </View>
+        <AppButton onPress={() => setFiltersOpen(false)}>Apply</AppButton>
+      </AppBottomSheet>
     </View>
   );
 }

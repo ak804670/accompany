@@ -30,6 +30,7 @@
     --radius: 8px;
   }
 
+  .dark,
   .dark:root {
     --background: 40 9.1% 6.5%;
     --foreground: 36.9 35.1% 92.7%;

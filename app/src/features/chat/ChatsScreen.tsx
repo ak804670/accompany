@@ -1,22 +1,31 @@
-import { useCallback, useEffect, useState } from 'react';
-import { FlatList, RefreshControl, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
+import { Animated, FlatList, Pressable, RefreshControl, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChatListItem } from '@/components/chat/ChatListItem';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
+import { CallsTab } from '@/features/chat/CallsTab';
 import { chatService, type ConversationSummary } from '@/features/chat/chat.service';
 import { ApiError } from '@/services/api';
 
 type ChatsScreenProps = {
-  onOpen: (item: ConversationSummary) => void;
+  onOpen: (item: ConversationSummary, highlightCallId?: string) => void;
 };
+
+type ChatTab = 'requests' | 'conversations' | 'calls';
+
+const TABS: ChatTab[] = ['requests', 'conversations', 'calls'];
 
 export function ChatsScreen({ onOpen }: ChatsScreenProps) {
   const insets = useSafeAreaInsets();
+  const [pageWidth, setPageWidth] = useState(0);
+  const pager = useRef<Animated.ScrollView>(null);
+  const scrollX = useRef(new Animated.Value(0)).current;
   const [items, setItems] = useState<ConversationSummary[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [tab, setTab] = useState<ChatTab>('requests');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +37,7 @@ export function ChatsScreen({ onOpen }: ChatsScreenProps) {
       setCursor(result.nextCursor);
       setError(null);
     } catch (caught) {
-      setError(!(caught instanceof ApiError) || caught.status === 0 ? "You're offline" : "Couldn't load conversations");
+      setError(!(caught instanceof ApiError) || caught.status === 0 ? "You're offline" : "We couldn't load chats right now.");
     }
   }, []);
 
@@ -36,7 +45,27 @@ export function ChatsScreen({ onOpen }: ChatsScreenProps) {
     void load(null, true).finally(() => setLoading(false));
   }, [load]);
 
-  const visible = items.filter((item) => item.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const needle = query.trim().toLowerCase();
+  const requestCount = items.filter((item) => item.status === 'pending').length;
+  const requests = items.filter((item) => item.status === 'pending' && item.name.toLowerCase().includes(needle));
+  const conversations = items.filter((item) => item.status !== 'pending' && item.name.toLowerCase().includes(needle));
+
+  function show(next: ChatTab) {
+    setTab(next);
+    pager.current?.scrollTo({ x: TABS.indexOf(next) * pageWidth, animated: true });
+  }
+
+  async function respond(id: string, accept: boolean) {
+    if (accept) await chatService.accept(id);
+    else await chatService.reject(id);
+    await load(null, true);
+  }
+
+  const indicator = scrollX.interpolate({
+    inputRange: [0, pageWidth, pageWidth * 2],
+    outputRange: [0, pageWidth / 3, (pageWidth * 2) / 3],
+    extrapolate: 'clamp',
+  });
 
   return (
     <View className="flex-1 bg-background px-lg" style={{ paddingTop: insets.top + 16 }}>
@@ -44,27 +73,90 @@ export function ChatsScreen({ onOpen }: ChatsScreenProps) {
       <TextInput
         value={query}
         onChangeText={setQuery}
-        placeholder="Search conversations"
-        accessibilityLabel="Search conversations"
+        placeholder={tab === 'requests' ? 'Search requests' : tab === 'calls' ? 'Search calls' : 'Search conversations'}
+        accessibilityLabel={tab === 'requests' ? 'Search requests' : tab === 'calls' ? 'Search calls' : 'Search conversations'}
         className="mt-md h-12 rounded-sm border border-input bg-background px-3 text-foreground"
       />
-      {loading ? <AppText className="mt-xl" variant="bodyM" tone="muted">Loading conversations...</AppText> : (
-        <FlatList
-          className="mt-md"
-          data={visible}
-          keyExtractor={(item) => item.id}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(null, true).finally(() => setRefreshing(false)); }} />}
-          onEndReached={() => { if (cursor && !query.trim()) void load(cursor, false); }}
-          ListEmptyComponent={
-            <View className="mt-xl gap-sm">
-              <AppText variant="h3">{error ?? 'No conversations yet'}</AppText>
-              <AppText variant="bodyM" tone="muted">{error ? 'Try again in a moment.' : 'When you start talking with someone, it will appear here.'}</AppText>
-              {error ? <AppButton variant="outline" onPress={() => void load(null, true)}>Try again</AppButton> : null}
+      <View className="mt-md border-b border-border">
+        <View className="flex-row">
+          <ChatTabButton label={requestCount > 0 ? `Requests (${requestCount})` : 'Requests'} active={tab === 'requests'} onPress={() => show('requests')} />
+          <ChatTabButton label="Conversations" active={tab === 'conversations'} onPress={() => show('conversations')} />
+          <ChatTabButton label="Calls" active={tab === 'calls'} onPress={() => show('calls')} />
+        </View>
+        <Animated.View className="h-0.5 w-1/3 bg-primary" style={{ transform: [{ translateX: indicator }] }} />
+      </View>
+      <View className="mt-sm flex-1" onLayout={(event) => setPageWidth(event.nativeEvent.layout.width)}>
+      {loading || pageWidth === 0 ? <AppText className="mt-xl" variant="bodyM" tone="muted">Loading chats...</AppText> : (
+        <Animated.ScrollView
+          ref={pager}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          nestedScrollEnabled
+          directionalLockEnabled
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: false })}
+          onMomentumScrollEnd={(event) => {
+            setTab(TABS[Math.round(event.nativeEvent.contentOffset.x / pageWidth)] ?? 'requests');
+          }}
+          className="mt-sm flex-1"
+        >
+          <ChatPage width={pageWidth} items={requests} emptyTitle={error ?? 'No requests'} emptyBody={error ? 'Try again in a moment.' : 'New conversation requests will appear here.'} error={error} refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(null, true).finally(() => setRefreshing(false)); }} onEnd={() => { if (cursor && !query.trim()) void load(cursor, false); }} onRetry={() => void load(null, true)} renderItem={(item) => (
+            <View className="gap-sm border-b border-border py-xs">
+              <ChatListItem item={item} onPress={() => onOpen(item)} />
+              {item.incoming ? (
+                <View className="flex-row gap-sm pb-sm">
+                  <AppButton variant="outline" className="flex-1" onPress={() => void respond(item.id, false)}>Decline</AppButton>
+                  <AppButton className="flex-1" onPress={() => void respond(item.id, true)}>Accept</AppButton>
+                </View>
+              ) : <AppText className="pb-sm" variant="caption" tone="muted">Waiting for them to accept</AppText>}
             </View>
-          }
-          renderItem={({ item }) => <ChatListItem item={item} onPress={() => onOpen(item)} />}
-        />
+          )} />
+          <ChatPage width={pageWidth} items={conversations} emptyTitle={error ?? 'No conversations yet'} emptyBody={error ? 'Try again in a moment.' : 'When someone accepts a conversation, it will appear here.'} error={error} refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(null, true).finally(() => setRefreshing(false)); }} onEnd={() => { if (cursor && !query.trim()) void load(cursor, false); }} onRetry={() => void load(null, true)} renderItem={(item) => <ChatListItem item={item} onPress={() => onOpen(item)} />} />
+          <CallsTab width={pageWidth} query={query} onOpen={onOpen} />
+        </Animated.ScrollView>
       )}
+      </View>
     </View>
+  );
+}
+
+function ChatPage({ width, items, emptyTitle, emptyBody, error, refreshing, onRefresh, onEnd, onRetry, renderItem }: {
+  width: number;
+  items: ConversationSummary[];
+  emptyTitle: string;
+  emptyBody: string;
+  error: string | null;
+  refreshing: boolean;
+  onRefresh: () => void;
+  onEnd: () => void;
+  onRetry: () => void;
+  renderItem: (item: ConversationSummary) => ReactElement;
+}) {
+  return (
+    <View style={{ width }}>
+      <FlatList
+        data={items}
+        keyExtractor={(item) => item.id}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        onEndReached={onEnd}
+        ListEmptyComponent={
+          <View className="mt-xl gap-sm pr-lg">
+            <AppText variant="h3">{emptyTitle}</AppText>
+            <AppText variant="bodyM" tone="muted">{emptyBody}</AppText>
+            {error ? <AppButton variant="outline" onPress={onRetry}>Try again</AppButton> : null}
+          </View>
+        }
+        renderItem={({ item }) => renderItem(item)}
+      />
+    </View>
+  );
+}
+
+function ChatTabButton({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="tab" accessibilityState={{ selected: active }} className="min-h-12 flex-1 items-center justify-center" onPress={onPress}>
+      <AppText variant="label" tone={active ? 'primary' : 'muted'}>{label}</AppText>
+    </Pressable>
   );
 }

@@ -1,4 +1,17 @@
-export type RealtimeEvent = { type: 'message' | 'presence' | 'read' };
+export type RealtimeEventType =
+  | 'message'
+  | 'presence'
+  | 'read'
+  | 'CHAT_REQUEST_RECEIVED'
+  | 'CHAT_REQUEST_ACCEPTED'
+  | 'CHAT_REQUEST_REJECTED'
+  | 'NEW_MESSAGE'
+  | 'MESSAGE_READ'
+  | 'USER_ONLINE'
+  | 'USER_OFFLINE'
+  | 'BLOCK_CREATED';
+
+export type RealtimeEvent = { type: RealtimeEventType };
 
 type Listener = (event: RealtimeEvent) => void;
 

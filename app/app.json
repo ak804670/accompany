@@ -12,10 +12,20 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.datingmarketplace.app"
+      "bundleIdentifier": "com.datingmarketplace.app",
+      "infoPlist": {
+        "UIBackgroundModes": ["voip", "audio"]
+      }
     },
     "android": {
       "package": "com.datingmarketplace.app",
+      "permissions": [
+        "android.permission.MANAGE_OWN_CALLS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_PHONE_CALL",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.USE_FULL_SCREEN_INTENT"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#F7F4EF"
@@ -36,6 +46,12 @@
       ],
       "expo-font",
       "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Accompany uses your location to show people nearby. Other people only see an approximate distance."
+        }
+      ],
       "@react-native-community/datetimepicker"
     ]
   }

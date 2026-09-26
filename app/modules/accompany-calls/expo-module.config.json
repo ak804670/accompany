@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["AccompanyCallsModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.accompanycalls.AccompanyCallsModule"]
+  }
+}

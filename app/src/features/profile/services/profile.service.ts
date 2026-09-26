@@ -42,8 +42,23 @@ export const profileService = {
     return result.interests;
   },
 
-  async saveInterests(interestIds: string[]): Promise<UserProfile> {
-    const result = await apiClient.put<ProfileResponse>('/v1/profile/interests', { interestIds });
+  async rates(): Promise<{ chat: number | null; audio: number | null; video: number | null }> {
+    const result = await apiClient.get<{ rates: { chat: number | null; audio: number | null; video: number | null } }>('/v1/profile/rates');
+    return result.rates;
+  },
+
+  async saveRates(rates: { chat?: number; audio?: number; video?: number }) {
+    const result = await apiClient.put<{ rates: { chat: number | null; audio: number | null; video: number | null } }>('/v1/profile/rates', rates);
+    return result.rates;
+  },
+
+  async reorderPhotos(mediaIds: string[]): Promise<UserProfile> {
+    const result = await apiClient.put<ProfileResponse>('/v1/profile/media/order', { mediaIds });
+    return result.profile;
+  },
+
+  async saveInterests(interestIds: string[], names: string[] = []): Promise<UserProfile> {
+    const result = await apiClient.put<ProfileResponse>('/v1/profile/interests', { interestIds, names });
     return result.profile;
   },
 

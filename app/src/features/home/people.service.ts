@@ -2,6 +2,21 @@ import { apiClient } from '@/services/api';
 import { env } from '@/services/env';
 import { secureStorage } from '@/services/storage';
 
+export type CommunicationRates = {
+  chat: number | null;
+  audio: number | null;
+  video: number | null;
+};
+
+export type PersonRelationship =
+  | 'none'
+  | 'pending_outgoing'
+  | 'pending_incoming'
+  | 'accepted'
+  | 'rejected'
+  | 'blocked'
+  | 'unavailable';
+
 export type OnlinePerson = {
   userId: string;
   name: string;
@@ -9,9 +24,22 @@ export type OnlinePerson = {
   bio: string | null;
   mediaId: string | null;
   online: boolean;
+  interests: string[];
+  sharedInterests: string[];
+  rates: CommunicationRates;
+  distanceKm: number | null;
+  relationship: PersonRelationship;
+  conversationId: string | null;
 };
 
-type PeopleResponse = { people: OnlinePerson[]; nextCursor: string | null };
+export type DiscoveryQuery = {
+  cursor?: string | null;
+  limit?: number;
+  distanceKm?: number | null;
+  interestIds?: string[];
+};
+
+type PeopleResponse = { people: OnlinePerson[]; nextCursor: string | null; hasMore?: boolean };
 type PersonResponse = { person: OnlinePerson };
 
 export const peopleService = {
@@ -19,9 +47,31 @@ export const peopleService = {
     await apiClient.post('/v1/presence', {});
   },
 
-  async online(cursor?: string | null): Promise<PeopleResponse> {
-    const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
-    return apiClient.get<PeopleResponse>(`/v1/people/online${query}`);
+  async online(query: DiscoveryQuery = {}): Promise<PeopleResponse> {
+    const params = new URLSearchParams();
+    if (query.cursor) params.set('cursor', query.cursor);
+    if (query.limit) params.set('limit', String(query.limit));
+    if (query.distanceKm) params.set('distance', String(query.distanceKm));
+    if (query.interestIds?.length) params.set('interests', query.interestIds.join(','));
+    const suffix = params.size ? `?${params.toString()}` : '';
+    return apiClient.get<PeopleResponse>(`/v1/people/online${suffix}`);
+  },
+
+  async saveLocation(latitude: number, longitude: number, discoveryEnabled = true): Promise<void> {
+    await apiClient.put('/v1/me/location', { latitude, longitude, discoveryEnabled });
+  },
+
+  async blocks(): Promise<Array<{ userId: string; name: string }>> {
+    const result = await apiClient.get<{ people: Array<{ userId: string; name: string }> }>('/v1/blocks');
+    return result.people;
+  },
+
+  async block(userId: string): Promise<void> {
+    await apiClient.post(`/v1/users/${userId}/block`, {});
+  },
+
+  async unblock(userId: string): Promise<void> {
+    await apiClient.delete(`/v1/users/${userId}/block`);
   },
 
   async person(userId: string): Promise<OnlinePerson> {

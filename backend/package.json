@@ -9,12 +9,14 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "migrate": "tsx src/infrastructure/database/migrate.ts",
-    "test": "tsx --test src/modules/auth/auth.service.test.ts src/modules/auth/auth.http.test.ts src/modules/communications/communications.test.ts src/modules/profile/profile.service.test.ts src/modules/profile/profile.http.test.ts"
+    "test": "tsx --test src/modules/auth/auth.service.test.ts src/modules/auth/auth.http.test.ts src/modules/communications/communications.test.ts src/modules/profile/profile.service.test.ts src/modules/profile/profile.http.test.ts src/modules/shell/conversation-rules.test.ts src/modules/calls/call-rules.test.ts src/modules/wallet/wallet-rules.test.ts"
   },
   "dependencies": {
+    "bullmq": "^6.3.8",
     "express": "^5.2.1",
     "ioredis": "^5.8.2",
     "jose": "^6.1.0",
+    "livekit-server-sdk": "^2.19.1",
     "pg": "^8.16.3",
     "zod": "^3.25.76"
   },

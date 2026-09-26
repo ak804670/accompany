@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 
+import { interestSlug, normalizeInterestName } from '../shell/interest-names.js';
 import type { Interest, OnboardingStep, ProfileMedia, ProfileRecord, StoredMedia } from './profile.types.js';
 
 export type ProfileWrite = {
@@ -17,10 +18,13 @@ export interface ProfileRepository {
   getProfile(userId: string): Promise<ProfileRecord | null>;
   saveProfile(userId: string, write: ProfileWrite): Promise<ProfileRecord>;
   listInterests(search?: string): Promise<Interest[]>;
-  replaceInterests(userId: string, interestIds: string[]): Promise<Interest[]>;
+  replaceInterests(userId: string, interestIds: string[], names?: string[]): Promise<Interest[]>;
   addMedia(media: StoredMedia): Promise<void>;
   getMedia(userId: string, mediaId: string): Promise<StoredMedia | null>;
   deleteMedia(userId: string, mediaId: string): Promise<StoredMedia | null>;
+  reorderMedia(userId: string, mediaIds: string[]): Promise<boolean>;
+  getRates(userId: string): Promise<{ chat: number | null; audio: number | null; video: number | null }>;
+  saveRates(userId: string, rates: { chat?: number; audio?: number; video?: number }): Promise<{ chat: number | null; audio: number | null; video: number | null }>;
 }
 
 type ProfileRow = {
@@ -33,6 +37,17 @@ type ProfileRow = {
   profile_status: ProfileRecord['profileStatus'];
   onboarding_step: OnboardingStep;
 };
+
+function ratesFrom(rows: Array<{ communication_type: string; rate_coins: number | string }>) {
+  const rates = { chat: null as number | null, audio: null as number | null, video: null as number | null };
+  for (const row of rows) {
+    const amount = Number(row.rate_coins);
+    if (row.communication_type === 'message') rates.chat = amount;
+    if (row.communication_type === 'voice_call') rates.audio = amount;
+    if (row.communication_type === 'video_call') rates.video = amount;
+  }
+  return rates;
+}
 
 function contentTypeForKey(storageKey: string): string {
   if (storageKey.endsWith('.png')) {
@@ -108,7 +123,7 @@ export class PgProfileRepository implements ProfileRepository {
       await this.pool.query(
         `INSERT INTO acc.m_profiles (user_id, display_name, date_of_birth, bio, language_preferences, profile_status, onboarding_step)
          VALUES ($1, btrim($2), $3, $4, COALESCE($5::text[], '{}'), COALESCE($6, 'incomplete'), COALESCE($7, 'basics'))`,
-        values,
+        values.slice(0, 7),
       );
     }
     const profile = await this.getProfile(userId);
@@ -129,23 +144,43 @@ export class PgProfileRepository implements ProfileRepository {
     return result.rows as Interest[];
   }
 
-  async replaceInterests(userId: string, interestIds: string[]): Promise<Interest[]> {
+  async replaceInterests(userId: string, interestIds: string[], names: string[] = []): Promise<Interest[]> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
+      const customIds: string[] = [];
+      for (const raw of names) {
+        const name = normalizeInterestName(raw);
+        if (!name) {
+          throw new Error('invalid-interest');
+        }
+        const slug = interestSlug(name);
+        const saved = await client.query(
+          `INSERT INTO acc.m_interests (name, slug, origin)
+           VALUES ($1, $2, 'custom')
+           ON CONFLICT (slug) DO UPDATE SET name = acc.m_interests.name
+           RETURNING id`,
+          [name, slug],
+        );
+        customIds.push(saved.rows[0].id as string);
+      }
+      const ids = [...new Set([...interestIds, ...customIds])];
+      if (ids.length > 12) {
+        throw new Error('invalid-interest');
+      }
       const found = await client.query(
         `SELECT id, name, slug FROM acc.m_interests WHERE status = 'active' AND id = ANY($1::uuid[])`,
-        [interestIds],
+        [ids],
       );
-      if (found.rows.length !== interestIds.length) {
+      if (found.rows.length !== ids.length) {
         throw new Error('unknown-interest');
       }
       await client.query(`DELETE FROM acc.p_user_interests WHERE user_id = $1`, [userId]);
-      if (interestIds.length > 0) {
+      if (ids.length > 0) {
         await client.query(
           `INSERT INTO acc.p_user_interests (user_id, interest_id)
            SELECT $1, id FROM acc.m_interests WHERE id = ANY($2::uuid[])`,
-          [userId, interestIds],
+          [userId, ids],
         );
       }
       await client.query('COMMIT');
@@ -225,6 +260,73 @@ export class PgProfileRepository implements ProfileRepository {
       );
     }
     return existing;
+  }
+
+  async reorderMedia(userId: string, mediaIds: string[]): Promise<boolean> {
+    const current = await this.userMedia(userId);
+    if (current.length !== mediaIds.length || current.some((item) => !mediaIds.includes(item.id))) {
+      return false;
+    }
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (const [index, mediaId] of mediaIds.entries()) {
+        await client.query(
+          `UPDATE acc.m_profile_media
+           SET sort_order = $3, is_primary = $4
+           WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
+          [mediaId, userId, index, index === 0],
+        );
+      }
+      await client.query('COMMIT');
+      return true;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getRates(userId: string) {
+    const result = await this.pool.query(
+      `SELECT communication_type, rate_coins FROM acc.m_companion_rates WHERE companion_user_id = $1 AND is_active`,
+      [userId],
+    );
+    return ratesFrom(result.rows);
+  }
+
+  async saveRates(userId: string, rates: { chat?: number; audio?: number; video?: number }) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `INSERT INTO acc.m_companion_profiles (user_id, is_available, availability_status)
+         VALUES ($1, FALSE, 'offline')
+         ON CONFLICT (user_id) DO NOTHING`,
+        [userId],
+      );
+      const pairs: Array<[string, string, number]> = [];
+      if (rates.chat !== undefined) pairs.push(['message', 'per_message', rates.chat]);
+      if (rates.audio !== undefined) pairs.push(['voice_call', 'per_minute', rates.audio]);
+      if (rates.video !== undefined) pairs.push(['video_call', 'per_minute', rates.video]);
+      for (const [communicationType, rateType, amount] of pairs) {
+        await client.query(
+          `INSERT INTO acc.m_companion_rates (companion_user_id, communication_type, rate_type, rate_coins, is_active)
+           VALUES ($1, $2, $3, $4, TRUE)
+           ON CONFLICT (companion_user_id, communication_type) WHERE is_active
+           DO UPDATE SET rate_coins = EXCLUDED.rate_coins, rate_type = EXCLUDED.rate_type`,
+          [userId, communicationType, rateType, amount],
+        );
+      }
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    return this.getRates(userId);
   }
 
   private async userInterests(userId: string): Promise<Interest[]> {

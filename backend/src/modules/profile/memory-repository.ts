@@ -49,16 +49,28 @@ export class MemoryProfileRepository implements ProfileRepository {
     return this.interests.filter((item) => !query || item.name.toLowerCase().includes(query) || item.slug.includes(query));
   }
 
-  async replaceInterests(userId: string, interestIds: string[]): Promise<Interest[]> {
-    const selected = this.interests.filter((item) => interestIds.includes(item.id));
-    if (selected.length !== interestIds.length) {
+  async replaceInterests(userId: string, interestIds: string[], names: string[] = []): Promise<Interest[]> {
+    const created = names.map((name) => {
+      const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const existing = this.interests.find((item) => item.slug === slug || item.name.toLowerCase() === name.trim().toLowerCase());
+      if (existing) return existing;
+      const interest = { id: randomUUID(), name: name.trim(), slug };
+      this.interests.push(interest);
+      return interest;
+    });
+    const selected = [
+      ...this.interests.filter((item) => interestIds.includes(item.id)),
+      ...created.filter((item) => !interestIds.includes(item.id)),
+    ];
+    const unique = [...new Map(selected.map((item) => [item.id, item])).values()];
+    if (unique.filter((item) => interestIds.includes(item.id)).length !== interestIds.length) {
       throw new Error('unknown-interest');
     }
     const profile = this.profiles.get(userId);
     if (profile) {
-      profile.interests = selected;
+      profile.interests = unique;
     }
-    return selected;
+    return unique;
   }
 
   async addMedia(media: StoredMedia): Promise<void> {
@@ -97,5 +109,36 @@ export class MemoryProfileRepository implements ProfileRepository {
       }
     }
     return media;
+  }
+
+  rates = new Map<string, { chat: number | null; audio: number | null; video: number | null }>();
+
+  async reorderMedia(userId: string, mediaIds: string[]): Promise<boolean> {
+    const profile = this.profiles.get(userId);
+    if (!profile || profile.media.length !== mediaIds.length || profile.media.some((item) => !mediaIds.includes(item.id))) {
+      return false;
+    }
+    profile.media = mediaIds.map((id, index) => {
+      const media = profile.media.find((item) => item.id === id)!;
+      const stored = this.media.get(id);
+      if (stored) stored.isPrimary = index === 0;
+      return { ...media, isPrimary: index === 0 };
+    });
+    return true;
+  }
+
+  async getRates(userId: string) {
+    return this.rates.get(userId) ?? { chat: null, audio: null, video: null };
+  }
+
+  async saveRates(userId: string, rates: { chat?: number; audio?: number; video?: number }) {
+    const current = await this.getRates(userId);
+    const next = {
+      chat: rates.chat ?? current.chat,
+      audio: rates.audio ?? current.audio,
+      video: rates.video ?? current.video,
+    };
+    this.rates.set(userId, next);
+    return next;
   }
 }
