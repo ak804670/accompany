@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import type { Pool } from 'pg';
 
+import { broadcastNewMessage, broadcastRead, saveTextMessage } from '../../infrastructure/realtime/chat-socket.js';
 import { AuthError } from '../auth/auth.errors.js';
 import type { AuthService } from '../auth/auth.service.js';
 import { canCreateChatRequest, canRespondToRequest, canSendMessage, type ConversationStatus } from './conversation-rules.js';
@@ -271,15 +272,11 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
         response.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Write a message first.' } });
         return;
       }
-      const inserted = await pool.query(
-        `INSERT INTO acc.messages (conversation_id, sender_id, message_type, content, billing_status)
-         VALUES ($1, $2, 'text', $3, 'not_billable')
-         RETURNING id, sender_id, content, created_at`,
-        [request.params.id, id, body],
-      );
-      const row = inserted.rows[0];
+      const clientMessageId = typeof request.body?.clientMessageId === 'string' ? request.body.clientMessageId.slice(0, 80) : null;
+      const saved = await saveTextMessage(pool, { conversationId: request.params.id, senderId: id, content: body, clientMessageId });
+      if (conversation) broadcastNewMessage(conversation.personId, request.params.id, saved);
       response.status(201).json({
-        message: { id: row.id, senderId: row.sender_id, body: row.content, createdAt: row.created_at, mine: true },
+        message: { id: saved.messageId, senderId: saved.senderId, body: saved.content, createdAt: saved.createdAt, mine: true, clientMessageId: saved.clientMessageId },
       });
     } catch (error) {
       next(error);
@@ -299,6 +296,8 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
          ON CONFLICT (user_id, conversation_id) DO UPDATE SET last_read_at = NOW()`,
         [id, request.params.id],
       );
+      const conversation = await loadConversation(pool, request.params.id, id);
+      if (conversation) broadcastRead(conversation.personId, request.params.id);
       response.json({ ok: true });
     } catch (error) {
       next(error);

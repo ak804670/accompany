@@ -9,7 +9,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "migrate": "tsx src/infrastructure/database/migrate.ts",
-    "test": "tsx --test src/modules/auth/auth.service.test.ts src/modules/auth/auth.http.test.ts src/modules/communications/communications.test.ts src/modules/profile/profile.service.test.ts src/modules/profile/profile.http.test.ts src/modules/shell/conversation-rules.test.ts src/modules/calls/call-rules.test.ts src/modules/wallet/wallet-rules.test.ts"
+    "test": "tsx --test src/modules/auth/auth.service.test.ts src/modules/auth/auth.http.test.ts src/modules/communications/communications.test.ts src/modules/profile/profile.service.test.ts src/modules/profile/profile.http.test.ts src/modules/shell/conversation-rules.test.ts src/modules/calls/call-rules.test.ts src/modules/wallet/wallet-rules.test.ts src/infrastructure/realtime/chat-events.test.ts"
   },
   "dependencies": {
     "bullmq": "^6.3.8",
@@ -18,12 +18,15 @@
     "jose": "^6.1.0",
     "livekit-server-sdk": "^2.19.1",
     "pg": "^8.16.3",
+    "socket.io": "^4.8.4",
+    "ws": "^8.21.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.2",
     "@types/pg": "^8.23.1",
+    "@types/ws": "^8.18.1",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3"
   }

@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
 
 import { type CallPlatform, type NativeCall, type NativeCallAction } from '@/features/calls/call-platform';
 
@@ -19,6 +19,12 @@ type NativeModule = {
   addListener(event: 'onCallAction', listener: (payload: { action: NativeCallAction; callId: string }) => void): { remove(): void };
 };
 
+async function allowNotifications(): Promise<void> {
+  if (Platform.OS !== 'android' || Number(Platform.Version) < 33) return;
+  const already = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+  if (!already) await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+}
+
 function loadModule(): NativeModule | null {
   if (Platform.OS === 'web') return null;
   try {
@@ -33,13 +39,13 @@ export function createNativePlatform(): CallPlatform {
   const native = loadModule();
   if (!native) return inactivePlatform;
   const show = (call: NativeCall, kind: 'incoming' | 'outgoing' | 'connected') => {
-    try {
+    void allowNotifications().then(() => {
       if (kind === 'incoming') native.showIncoming(call.id, call.name, call.video);
       if (kind === 'outgoing') native.showOutgoing(call.id, call.name, call.video);
       if (kind === 'connected') native.showConnected(call.id, call.name, call.video);
-    } catch {
-      // Expo Go has no CallKit or CallStyle. The in-app call state still updates.
-    }
+    }).catch((error: unknown) => {
+      console.warn('Call notification was not posted', error);
+    });
   };
   return {
     available: () => Platform.OS === 'ios' || Platform.OS === 'android',

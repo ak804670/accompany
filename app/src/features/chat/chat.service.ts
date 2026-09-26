@@ -38,6 +38,7 @@ export type ChatMessage = {
   body: string;
   createdAt: string;
   mine: boolean;
+  clientMessageId?: string | null;
 };
 
 type ListResponse = { conversations: ConversationSummary[]; nextCursor: string | null; unread: number };
@@ -77,8 +78,8 @@ export const chatService = {
     return apiClient.get<MessagesResponse>(`/v1/conversations/${conversationId}/messages${query}`);
   },
 
-  async send(conversationId: string, body: string): Promise<ChatMessage> {
-    const result = await apiClient.post<SendResponse>(`/v1/conversations/${conversationId}/messages`, { body });
+  async send(conversationId: string, body: string, clientMessageId?: string): Promise<ChatMessage> {
+    const result = await apiClient.post<SendResponse>(`/v1/conversations/${conversationId}/messages`, { body, clientMessageId });
     return result.message;
   },
 

@@ -19,6 +19,7 @@ import { callManager } from '@/features/calls/call-manager';
 import { groupTimeline, isLiveCall } from '@/features/calls/call-presentation';
 import { peopleService } from '@/features/home/people.service';
 import { ApiError } from '@/services/api';
+import { socketService, type LiveMessage } from '@/services/realtime/socket';
 
 type ChatScreenProps = {
   conversationId: string;
@@ -36,6 +37,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
   const [cursor, setCursor] = useState<string | null>(null);
   const [header, setHeader] = useState({ name, personId: personId ?? null, online });
   const [draft, setDraft] = useState('');
+  const [otherTyping, setOtherTyping] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [callNotice, setCallNotice] = useState<string | null>(null);
@@ -84,6 +86,44 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
       cancelled = true;
     };
   }, [conversationId]);
+
+  useEffect(() => {
+    socketService.join(conversationId);
+    const apply = (payload: unknown) => {
+      const message = payload as LiveMessage;
+      if (!message || message.conversationId !== conversationId || !message.messageId) return;
+      setMessages((current) => {
+        if (current.some((item) => item.id === message.messageId)) return current;
+        const pendingIndex = current.findIndex((item) => item.id === message.clientMessageId || item.clientMessageId === message.clientMessageId);
+        const next = {
+          id: message.messageId,
+          senderId: message.senderId,
+          body: message.content,
+          createdAt: message.createdAt,
+          mine: message.senderId === user?.id,
+          clientMessageId: message.clientMessageId,
+        };
+        if (pendingIndex >= 0) return current.map((item, index) => (index === pendingIndex ? next : item));
+        return [...current, next];
+      });
+      if (message.senderId !== user?.id) socketService.markRead(conversationId, [message.messageId]);
+    };
+    const offNew = socketService.subscribe('message:new', apply);
+    const offTyping = socketService.subscribe('typing:start', (payload) => {
+      const body = payload as { conversationId?: string; userId?: string };
+      if (body.conversationId === conversationId && body.userId !== user?.id) setOtherTyping(true);
+    });
+    const offStop = socketService.subscribe('typing:stop', (payload) => {
+      const body = payload as { conversationId?: string };
+      if (body.conversationId === conversationId) setOtherTyping(false);
+    });
+    return () => {
+      offNew();
+      offTyping();
+      offStop();
+      socketService.leave(conversationId);
+    };
+  }, [conversationId, user?.id]);
 
   useEffect(() => {
     if (!header.personId) return;
@@ -151,13 +191,14 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
   async function send() {
     const body = draft.trim();
     if (!body || sending) return;
-    const pendingId = `pending-${Date.now()}`;
+    const pendingId = globalThis.crypto?.randomUUID?.() ?? `pending-${Date.now()}`;
     const pending: ChatMessage = {
       id: pendingId,
-      senderId: 'me',
+      senderId: user?.id ?? 'me',
       body,
       createdAt: new Date().toISOString(),
       mine: true,
+      clientMessageId: pendingId,
     };
     setSending(true);
     setSendError(false);
@@ -165,7 +206,17 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
     setMessages((current) => [...current, pending]);
     setDraft('');
     try {
-      const message = await chatService.send(conversationId, body);
+      socketService.typing(conversationId, false);
+      const message = socketService.connected
+        ? await socketService.sendMessage(conversationId, body, pendingId).then((saved) => ({
+          id: saved.messageId,
+          senderId: saved.senderId,
+          body: saved.content,
+          createdAt: saved.createdAt,
+          mine: true,
+          clientMessageId: saved.clientMessageId,
+        }))
+        : await chatService.send(conversationId, body, pendingId);
       setFreshId(message.id);
       setMessages((current) => current.map((item) => (item.id === pendingId ? message : item)));
     } catch {
@@ -281,7 +332,8 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
           </View>
         </View>
       ) : canMessage ? (
-        <MessageComposer value={draft} sending={sending} failed={sendError} onChange={setDraft} onSend={() => void send()} />
+        {otherTyping ? <AppText className="px-md pb-xs" variant="caption" tone="muted">{header.name} is typing</AppText> : null}
+        <MessageComposer value={draft} sending={sending} failed={sendError} onChange={(value) => { setDraft(value); socketService.typing(conversationId, value.trim().length > 0); }} onSend={() => void send()} />
       ) : (
         <View className="mx-md gap-xs rounded-sm bg-muted p-md">
           <AppText variant="label">Request sent</AppText>

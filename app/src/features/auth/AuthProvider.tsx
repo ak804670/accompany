@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { configureApiAuth } from '@/services/api';
+import { socketService } from '@/services/realtime/socket';
 import { secureStorage } from '@/services/storage';
 
 import { AuthContext, type AuthContextValue } from '@/features/auth/auth-context';
@@ -65,6 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (status === 'authenticated') socketService.connect();
+    if (status === 'unauthenticated') socketService.disconnect();
+  }, [status]);
 
   const requestOtp = useCallback(async (channel: AuthChannel, destination: string) => {
     setStatus('requestingOtp');

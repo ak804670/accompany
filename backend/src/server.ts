@@ -13,6 +13,7 @@ import { WalletService } from './modules/wallet/wallet.service.js';
 import { readCommunicationConfig } from './config/communication.js';
 import { readConfig } from './config/env.js';
 import { createPool } from './infrastructure/database/pool.js';
+import { attachChatSocket } from './infrastructure/realtime/chat-socket.js';
 import { RedisRateLimiter } from './infrastructure/redis/rate-limit.js';
 import { PgAuthRepository } from './modules/auth/auth.repository.js';
 import { AuthService } from './modules/auth/auth.service.js';
@@ -131,6 +132,13 @@ const server = app.listen(config.port, () => {
     emailProvider: emailProvider.name,
     smsProvider: smsProvider.name,
   });
+});
+
+attachChatSocket(server, {
+  auth: authService,
+  pool,
+  limiter: new RedisRateLimiter(redis),
+  notify: (message) => notifications.enqueue(message).then(() => undefined),
 });
 
 void communicationStore.recoverInterrupted().catch((error: unknown) => {
