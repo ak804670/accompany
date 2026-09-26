@@ -5,6 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
+import { AccompanyIllustration } from '@/components/illustrations/AccompanyIllustration';
 import { OnboardingFrame } from '@/features/profile/components/OnboardingFrame';
 import { useProfile } from '@/features/profile/hooks/useProfile';
 import type { OnboardingStackParamList } from '@/features/profile/navigation';
@@ -139,8 +140,9 @@ export function PhotoScreen({ navigation }: Props) {
                 ))}
               </ScrollView>
             ) : (
-              <View className="flex-1 items-center justify-center px-lg">
-                <AppText variant="bodyM" tone="muted">Your photos will appear here.</AppText>
+              <View className="flex-1 items-center justify-center gap-sm px-lg">
+                <AccompanyIllustration name="profile-photo" size={120} />
+                <AppText className="text-center" variant="bodyM" tone="muted">Your photos will appear here.</AppText>
               </View>
             )}
             {active ? (

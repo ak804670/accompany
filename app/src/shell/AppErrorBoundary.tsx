@@ -1,7 +1,10 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
+import { useColorScheme } from 'nativewind';
 
+import { AccompanyIllustration } from '@/components/illustrations/AccompanyIllustration';
 import { reportError } from '@/services/monitoring/report-error';
+import { palette } from '@/theme/tokens';
 
 type AppErrorBoundaryProps = {
   children: ReactNode;
@@ -27,22 +30,22 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
 
   render() {
     if (this.state.error) {
-      return (
-        <View
-          style={{
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 16,
-          }}>
-          <Text>Something went wrong.</Text>
-          {__DEV__ && this.state.error?.message ? (
-            <Text style={{ marginTop: 12, textAlign: 'center' }}>{this.state.error.message}</Text>
-          ) : null}
-        </View>
-      );
+      return <ErrorFallback message={__DEV__ ? this.state.error.message : undefined} />;
     }
 
     return this.props.children;
   }
+}
+
+function ErrorFallback({ message }: { message?: string }) {
+  const { colorScheme } = useColorScheme();
+  const colors = palette[colorScheme === 'dark' ? 'dark' : 'light'];
+
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: colors.background }}>
+      <AccompanyIllustration name="error-generic" size={160} />
+      <Text style={{ marginTop: 16, fontSize: 20, color: colors.text }}>Something went wrong.</Text>
+      {message ? <Text style={{ marginTop: 12, textAlign: 'center', color: colors.textMuted }}>{message}</Text> : null}
+    </View>
+  );
 }

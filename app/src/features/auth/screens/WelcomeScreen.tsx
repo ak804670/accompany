@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
+import { AccompanyIllustration } from '@/components/illustrations/AccompanyIllustration';
 
 import type { AuthStackParamList } from '@/features/auth/navigation';
 
@@ -20,6 +21,7 @@ export function WelcomeScreen({ navigation }: WelcomeScreenProps) {
         <AppText variant="caption" tone="muted">
           Accompany
         </AppText>
+        <AccompanyIllustration name="welcome" size={148} motion="enter" />
         <AppText variant="display">Sometimes you just want someone around.</AppText>
         <AppText variant="bodyL" tone="muted">
           Find people to talk to, share interests with, and spend time with.

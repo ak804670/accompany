@@ -1,5 +1,4 @@
 import { Phone, Video } from 'lucide-react-native';
-import { Icon } from '@/components/ui/icon';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 
@@ -8,6 +7,8 @@ import { CallRequestDialog } from '@/components/chat/CallRequestDialog';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
+import { IllustratedState } from '@/components/illustrations/IllustratedState';
+import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
 import { PersonAvatar } from '@/components/home/PersonAvatar';
 import { callManager } from '@/features/calls/call-manager';
 import { chatService, type CallHistoryItem, type ConversationSummary } from '@/features/chat/chat.service';
@@ -77,12 +78,13 @@ export function CallsTab({ width, query, onOpen }: CallsTabProps) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(null, true).finally(() => setRefreshing(false)); }} />}
         onEndReached={() => { if (cursor && !needle) void load(cursor, false); }}
         ListEmptyComponent={
-          <View className="mt-xl items-start gap-sm pr-lg">
-            <Icon as={Phone} className="size-5 text-muted-foreground" />
-            <AppText variant="h3">{error ?? 'No calls yet'}</AppText>
-            <AppText variant="bodyM" tone="muted">{error ? 'Try again in a moment.' : 'Your recent voice and video calls will appear here.'}</AppText>
+          <IllustratedState
+            name={error ? illustrationForError(error) : 'calls-empty'}
+            title={error ?? (missed ? 'No missed calls' : 'No calls yet')}
+            body={error ? 'Try again in a moment.' : missed ? 'Missed voice and video calls will appear here.' : 'Your recent voice and video calls will appear here.'}
+          >
             {error ? <AppButton variant="outline" onPress={() => void load(null, true)}>Try again</AppButton> : null}
-          </View>
+          </IllustratedState>
         }
         renderItem={({ item }) => (
           <Pressable

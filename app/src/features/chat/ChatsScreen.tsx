@@ -5,6 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChatListItem } from '@/components/chat/ChatListItem';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
+import { IllustratedState } from '@/components/illustrations/IllustratedState';
+import { illustrationForError, type IllustrationName } from '@/assets/illustrations/illustrationRegistry';
 import { CallsTab } from '@/features/chat/CallsTab';
 import { chatService, type ConversationSummary } from '@/features/chat/chat.service';
 import { ApiError } from '@/services/api';
@@ -86,7 +88,7 @@ export function ChatsScreen({ onOpen }: ChatsScreenProps) {
         <Animated.View className="h-0.5 w-1/3 bg-primary" style={{ transform: [{ translateX: indicator }] }} />
       </View>
       <View className="mt-sm flex-1" onLayout={(event) => setPageWidth(event.nativeEvent.layout.width)}>
-      {loading || pageWidth === 0 ? <AppText className="mt-xl" variant="bodyM" tone="muted">Loading chats...</AppText> : (
+      {loading ? <IllustratedState name="loading" motion="pulse" size={140} title="Loading chats..." /> : pageWidth === 0 ? null : (
         <Animated.ScrollView
           ref={pager}
           horizontal
@@ -101,7 +103,7 @@ export function ChatsScreen({ onOpen }: ChatsScreenProps) {
           }}
           className="mt-sm flex-1"
         >
-          <ChatPage width={pageWidth} items={requests} emptyTitle={error ?? 'No requests'} emptyBody={error ? 'Try again in a moment.' : 'New conversation requests will appear here.'} error={error} refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(null, true).finally(() => setRefreshing(false)); }} onEnd={() => { if (cursor && !query.trim()) void load(cursor, false); }} onRetry={() => void load(null, true)} renderItem={(item) => (
+          <ChatPage width={pageWidth} items={requests} illustration={error ? illustrationForError(error) : 'chat-requests'} emptyTitle={error ?? 'No requests'} emptyBody={error ? 'Try again in a moment.' : 'New conversation requests will appear here.'} error={error} refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(null, true).finally(() => setRefreshing(false)); }} onEnd={() => { if (cursor && !query.trim()) void load(cursor, false); }} onRetry={() => void load(null, true)} renderItem={(item) => (
             <View className="gap-sm border-b border-border py-xs">
               <ChatListItem item={item} onPress={() => onOpen(item)} />
               {item.incoming ? (
@@ -112,7 +114,7 @@ export function ChatsScreen({ onOpen }: ChatsScreenProps) {
               ) : <AppText className="pb-sm" variant="caption" tone="muted">Waiting for them to accept</AppText>}
             </View>
           )} />
-          <ChatPage width={pageWidth} items={conversations} emptyTitle={error ?? 'No conversations yet'} emptyBody={error ? 'Try again in a moment.' : 'When someone accepts a conversation, it will appear here.'} error={error} refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(null, true).finally(() => setRefreshing(false)); }} onEnd={() => { if (cursor && !query.trim()) void load(cursor, false); }} onRetry={() => void load(null, true)} renderItem={(item) => <ChatListItem item={item} onPress={() => onOpen(item)} />} />
+          <ChatPage width={pageWidth} items={conversations} illustration={error ? illustrationForError(error) : 'chat-empty'} emptyTitle={error ?? 'No conversations yet'} emptyBody={error ? 'Try again in a moment.' : 'When someone accepts a conversation, it will appear here.'} error={error} refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(null, true).finally(() => setRefreshing(false)); }} onEnd={() => { if (cursor && !query.trim()) void load(cursor, false); }} onRetry={() => void load(null, true)} renderItem={(item) => <ChatListItem item={item} onPress={() => onOpen(item)} />} />
           <CallsTab width={pageWidth} query={query} onOpen={onOpen} />
         </Animated.ScrollView>
       )}
@@ -121,9 +123,10 @@ export function ChatsScreen({ onOpen }: ChatsScreenProps) {
   );
 }
 
-function ChatPage({ width, items, emptyTitle, emptyBody, error, refreshing, onRefresh, onEnd, onRetry, renderItem }: {
+function ChatPage({ width, items, illustration, emptyTitle, emptyBody, error, refreshing, onRefresh, onEnd, onRetry, renderItem }: {
   width: number;
   items: ConversationSummary[];
+  illustration: IllustrationName;
   emptyTitle: string;
   emptyBody: string;
   error: string | null;
@@ -141,11 +144,9 @@ function ChatPage({ width, items, emptyTitle, emptyBody, error, refreshing, onRe
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         onEndReached={onEnd}
         ListEmptyComponent={
-          <View className="mt-xl gap-sm pr-lg">
-            <AppText variant="h3">{emptyTitle}</AppText>
-            <AppText variant="bodyM" tone="muted">{emptyBody}</AppText>
+          <IllustratedState name={illustration} title={emptyTitle} body={emptyBody}>
             {error ? <AppButton variant="outline" onPress={onRetry}>Try again</AppButton> : null}
-          </View>
+          </IllustratedState>
         }
         renderItem={({ item }) => renderItem(item)}
       />

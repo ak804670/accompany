@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
+import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { walletService, type WalletSummary, type WalletTransaction } from '@/features/wallet/wallet.service';
 
 type WalletScreenProps = { onBack: () => void; onAdd: () => void; onWithdraw: () => void };
@@ -16,6 +17,7 @@ export function WalletScreen({ onBack, onAdd, onWithdraw }: WalletScreenProps) {
   const [summary, setSummary] = useState<WalletSummary | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -26,6 +28,8 @@ export function WalletScreen({ onBack, onAdd, onWithdraw }: WalletScreenProps) {
       setError(null);
     }).catch(() => {
       if (active) setError("Couldn't load your coins.");
+    }).finally(() => {
+      if (active) setReady(true);
     });
     return () => { active = false; };
   }, []));
@@ -50,7 +54,9 @@ export function WalletScreen({ onBack, onAdd, onWithdraw }: WalletScreenProps) {
       {error ? <AppText variant="bodyS" tone="warning">{error}</AppText> : null}
       <View className="gap-sm">
         <AppText variant="label">Recent activity</AppText>
-        {transactions.length === 0 ? <AppText variant="bodyS" tone="muted">No coin activity yet.</AppText> : transactions.map((item) => (
+        {!error && ready && transactions.length === 0 ? (
+          <IllustratedState name="wallet-empty" size={140} title="No coin activity yet." body="Purchases and call earnings will show up here." />
+        ) : transactions.map((item) => (
           <View key={item.id} className="flex-row items-center justify-between border-b border-border py-sm">
             <View>
               <AppText variant="bodyM">{item.label}</AppText>

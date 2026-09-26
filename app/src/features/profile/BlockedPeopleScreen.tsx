@@ -7,6 +7,8 @@ import { AppButton } from '@/components/design-system/AppButton';
 import { AppDialog } from '@/components/design-system/AppDialog';
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
+import { IllustratedState } from '@/components/illustrations/IllustratedState';
+import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
 import { PersonAvatar } from '@/components/home/PersonAvatar';
 import { refreshDiscovery } from '@/features/home/discovery-refresh';
 import { peopleService } from '@/features/home/people.service';
@@ -46,15 +48,14 @@ export function BlockedPeopleScreen({ onBack }: { onBack: () => void }) {
         <AppIconButton icon={ChevronLeft} size="lg" accessibilityLabel="Go back" onPress={onBack} />
         <AppText variant="h3">Blocked people</AppText>
       </View>
-      {loading ? <AppText className="mt-xl" variant="bodyM" tone="muted">Loading blocked people...</AppText> : null}
+      {loading ? <IllustratedState name="loading" motion="pulse" size={140} title="Loading blocked people..." /> : null}
       {error ? (
-        <View className="mt-xl gap-sm">
-          <AppText variant="bodyM">{error}</AppText>
+        <IllustratedState name={illustrationForError(error)} title={error} body="Try again in a moment.">
           <AppButton variant="outline" onPress={load}>Try again</AppButton>
-        </View>
+        </IllustratedState>
       ) : null}
       {!loading && !error && people.length === 0 ? (
-        <AppText className="mt-xl" variant="bodyM" tone="muted">You haven't blocked anyone.</AppText>
+        <IllustratedState name="blocked-empty" title="You haven't blocked anyone." body="Blocking stays private. People you block cannot contact you." />
       ) : null}
       <View className="mt-lg gap-md">
         {people.map((person) => (

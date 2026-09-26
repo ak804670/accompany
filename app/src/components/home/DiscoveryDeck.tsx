@@ -4,7 +4,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
 
 import { AppButton } from '@/components/design-system/AppButton';
-import { AppText } from '@/components/design-system/AppText';
+import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { OnlinePersonCard } from '@/components/home/OnlinePersonCard';
 import { nextDeckIndex, shouldCompleteSwipe } from '@/features/home/discovery';
 import type { OnlinePerson } from '@/features/home/people.service';
@@ -16,9 +16,10 @@ type DiscoveryDeckProps = {
   onIndex: (index: number) => void;
   onOpen: (userId: string) => void;
   onAdjustFilters?: () => void;
+  filtered?: boolean;
 };
 
-export function DiscoveryDeck({ people, index, hasMore, onIndex, onOpen, onAdjustFilters }: DiscoveryDeckProps) {
+export function DiscoveryDeck({ people, index, hasMore, onIndex, onOpen, onAdjustFilters, filtered = false }: DiscoveryDeckProps) {
   const x0 = useSharedValue(0);
   const x1 = useSharedValue(0);
   const topSlot = useSharedValue(0);
@@ -92,10 +93,15 @@ export function DiscoveryDeck({ people, index, hasMore, onIndex, onOpen, onAdjus
 
   if (!current) {
     return (
-      <View className="flex-1 justify-center gap-sm">
-        <AppText variant="h3">No one new to show right now.</AppText>
-        <AppText variant="bodyM" tone="muted">We'll let you know when more people are available.</AppText>
-        {onAdjustFilters ? <AppButton variant="outline" onPress={onAdjustFilters}>Adjust filters</AppButton> : null}
+      <View className="flex-1 justify-center">
+        <IllustratedState
+          name={filtered ? 'home-filtered' : 'home-empty'}
+          motion={filtered ? 'none' : 'float'}
+          title="No one new to show right now."
+          body="We'll let you know when more people are available."
+        >
+          {onAdjustFilters ? <AppButton variant="outline" onPress={onAdjustFilters}>Adjust filters</AppButton> : null}
+        </IllustratedState>
       </View>
     );
   }

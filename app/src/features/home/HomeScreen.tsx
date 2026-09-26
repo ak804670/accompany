@@ -6,6 +6,8 @@ import { AppBottomSheet } from '@/components/design-system/AppBottomSheet';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
 import { DiscoveryDeck } from '@/components/home/DiscoveryDeck';
+import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
+import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { DISCOVERY_RADII_KM } from '@/features/home/discovery';
 import { captureLocation } from '@/features/home/location';
 import { onDiscoveryRefresh } from '@/features/home/discovery-refresh';
@@ -58,14 +60,14 @@ export function HomeScreen({ onOpenPerson }: HomeScreenProps) {
           <AppText variant="caption" tone="muted">Loading people...</AppText>
         </View>
       ) : error ? (
-        <View className="mt-xl flex-1 justify-center gap-sm">
-          <AppText variant="h3">Something went wrong.</AppText>
-          <AppText variant="bodyM" tone="muted">{error}</AppText>
-          <AppButton variant="outline" onPress={retry}>Try again</AppButton>
+        <View className="mt-xl flex-1 justify-center">
+          <IllustratedState name={illustrationForError(error)} title="Something went wrong." body={error}>
+            <AppButton variant="outline" onPress={retry}>Try again</AppButton>
+          </IllustratedState>
         </View>
       ) : (
         <View className="mt-md min-h-0 flex-1">
-          <DiscoveryDeck people={people} index={index} hasMore={hasMore} onIndex={setIndex} onOpen={onOpenPerson} onAdjustFilters={() => setFiltersOpen(true)} />
+          <DiscoveryDeck people={people} index={index} hasMore={hasMore} filtered={distanceKm !== null || interestIds.length > 0} onIndex={setIndex} onOpen={onOpenPerson} onAdjustFilters={() => setFiltersOpen(true)} />
         </View>
       )}
       <AppBottomSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filter">

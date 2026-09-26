@@ -12,6 +12,9 @@ import { AppButton } from '@/components/design-system/AppButton';
 import { AppDialog } from '@/components/design-system/AppDialog';
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
+import { AccompanyIllustration } from '@/components/illustrations/AccompanyIllustration';
+import { IllustratedState } from '@/components/illustrations/IllustratedState';
+import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
 import { useSession } from '@/features/auth';
 import { chatService, type CallEvent, type ChatMessage } from '@/features/chat/chat.service';
 import { refreshDiscovery } from '@/features/home/discovery-refresh';
@@ -266,9 +269,10 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
       {callNotice ? <AppText className="px-md py-sm" variant="bodyS" tone="warning">{callNotice}</AppText> : null}
       <View className="flex-1">
         {error ? (
-          <View className="flex-1 justify-center gap-md px-lg">
-            <AppText variant="bodyM">{error}</AppText>
-            <AppButton variant="outline" onPress={() => { setLoading(true); setError(null); void load().catch(() => setError("Couldn't load this conversation")).finally(() => setLoading(false)); }}>Try again</AppButton>
+          <View className="flex-1 justify-center px-lg">
+            <IllustratedState name={illustrationForError(error)} title={error} body="Try again in a moment.">
+              <AppButton variant="outline" onPress={() => { setLoading(true); setError(null); void load().catch(() => setError("Couldn't load this conversation")).finally(() => setLoading(false)); }}>Try again</AppButton>
+            </IllustratedState>
           </View>
         ) : (
           <FlatList
@@ -313,7 +317,11 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
         )}
         {loading ? (
           <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
-            <AppText variant="bodyM" tone="muted">Loading messages...</AppText>
+            <IllustratedState name="loading" motion="pulse" size={140} title="Loading messages..." />
+          </View>
+        ) : !error && rows.length === 0 ? (
+          <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
+            <IllustratedState name="chat-empty" size={150} title="No messages yet" body="Say hello when you're ready." />
           </View>
         ) : null}
       </View>
@@ -332,10 +340,13 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
           </View>
         </View>
       ) : canMessage ? (
-        {otherTyping ? <AppText className="px-md pb-xs" variant="caption" tone="muted">{header.name} is typing</AppText> : null}
-        <MessageComposer value={draft} sending={sending} failed={sendError} onChange={(value) => { setDraft(value); socketService.typing(conversationId, value.trim().length > 0); }} onSend={() => void send()} />
+        <View>
+          {otherTyping ? <AppText className="px-md pb-xs" variant="caption" tone="muted">{header.name} is typing</AppText> : null}
+          <MessageComposer value={draft} sending={sending} failed={sendError} onChange={(value) => { setDraft(value); socketService.typing(conversationId, value.trim().length > 0); }} onSend={() => void send()} />
+        </View>
       ) : (
-        <View className="mx-md gap-xs rounded-sm bg-muted p-md">
+        <View className="mx-md items-center gap-xs rounded-sm bg-muted p-md">
+          <AccompanyIllustration name="chat-request" size={96} />
           <AppText variant="label">Request sent</AppText>
           <AppText variant="bodyS" tone="muted">
             {status === 'rejected' ? 'This request was declined.' : `Waiting for ${header.name} to respond.`}

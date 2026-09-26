@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
+import { IllustratedState } from '@/components/illustrations/IllustratedState';
+import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
 import { OnlineStatus } from '@/components/home/OnlineStatus';
 import { PersonAvatar } from '@/components/home/PersonAvatar';
 import { chatService } from '@/features/chat/chat.service';
@@ -130,8 +132,13 @@ export function PersonScreen({ userId, onBack, onConversation }: PersonScreenPro
           )}
         </View>
       ) : (
-        <View className="mt-xl gap-md">
-          <AppText variant="bodyM" tone="muted">{error ?? 'Loading...'}</AppText>
+        <View className="mt-xl">
+          <IllustratedState
+            name={error ? illustrationForError(error) : 'loading'}
+            motion={error ? 'none' : 'pulse'}
+            size={140}
+            title={error ?? 'Loading...'}
+          />
         </View>
       )}
     </View>
