@@ -9,6 +9,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 
+import { ActiveCallScreen } from '@/features/calls/ActiveCallScreen';
 import { callManager } from '@/features/calls/call-manager';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -58,6 +59,7 @@ export function App() {
           <AuthProvider>
             <ProfileProvider>
             <RootNavigator />
+            <ActiveCallScreen />
             <AppToastHost />
             <PortalHost />
             </ProfileProvider>

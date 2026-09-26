@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CallEventRow } from '@/components/chat/CallEventRow';
 import { CallRequestDialog } from '@/components/chat/CallRequestDialog';
-import { CallingState } from '@/components/chat/CallingState';
 import { ChatHeader } from '@/components/chat/ChatHeader';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { MessageComposer } from '@/components/chat/MessageComposer';
@@ -96,6 +95,13 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
         const current = callManager.getCurrentCall();
         const match = current ? items.find((item) => item.id === current.id) : undefined;
         if (match) callManager.syncRemote(match.status);
+        const ringing = items.find((item) => isLiveCall(item.status));
+        if (ringing && !current) {
+          const outgoing = ringing.callerId === user?.id;
+          const input = { id: ringing.id, name: header.name, video: ringing.callType === 'VIDEO', status: ringing.status };
+          if (outgoing) callManager.presentOutgoing(input);
+          else callManager.presentIncoming(input);
+        }
       }).catch(() => undefined);
     };
     loadCalls();
@@ -172,7 +178,6 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
     }
   }
 
-  const live = calls.find((item) => isLiveCall(item.status)) ?? null;
   const rows = useMemo(() => groupTimeline([
     ...messages.map((message) => ({ kind: 'message' as const, id: message.id, at: message.createdAt, message })),
     ...calls.filter((call) => !isLiveCall(call.status)).map((call) => ({ kind: 'call' as const, id: call.id, at: call.createdAt, call })),
@@ -261,18 +266,6 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
           </View>
         ) : null}
       </View>
-      {live ? (
-        <CallingState
-          name={header.name}
-          video={live.callType === 'VIDEO'}
-          outgoing={live.callerId === user?.id}
-          connected={live.status !== 'RINGING'}
-          onCancel={() => void callManager.endCall(live.id)}
-          onDecline={() => void callManager.rejectCall(live.id)}
-          onAccept={() => void callManager.answerCall(live.id)}
-          onEnd={() => void callManager.endCall(live.id)}
-        />
-      ) : null}
       {blocked ? (
         <View className="mx-md gap-sm rounded-sm bg-muted p-md">
           <AppText variant="label">Conversation unavailable</AppText>

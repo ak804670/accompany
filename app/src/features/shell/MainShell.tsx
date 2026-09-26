@@ -5,7 +5,6 @@ import { Animated, View } from 'react-native';
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AppButton } from '@/components/design-system/AppButton';
-import { AppText } from '@/components/design-system/AppText';
 import { AppDialog } from '@/components/design-system/AppDialog';
 import { BottomNavigation, type MainTab } from '@/components/navigation/BottomNavigation';
 import { ChatScreen } from '@/features/chat/ChatScreen';
@@ -149,14 +148,11 @@ function BlockedPeopleRoute({ navigation }: NativeStackScreenProps<ShellParamLis
 }
 
 function IncomingCall() {
-  const [call, setCall] = useState<{ id: string; callType: string } | null>(null);
-
   useEffect(() => {
     let active = true;
     const tick = () => {
       void callService.incoming().then((next) => {
         if (!active) return;
-        setCall(next);
         if (next) callManager.presentIncoming({ id: next.id, name: 'Incoming call', video: next.callType === 'VIDEO', status: next.status });
         else if (callManager.getCurrentCall()?.outgoing === false) callManager.syncRemote('ENDED');
       }).catch(() => undefined);
@@ -169,17 +165,7 @@ function IncomingCall() {
     };
   }, []);
 
-  if (!call) return null;
-  const label = call.callType === 'VIDEO' ? 'video' : 'voice';
-  return (
-    <View className="absolute inset-x-4 top-12 z-50 gap-sm rounded-md border border-border bg-card p-md">
-      <AppText variant="label">Incoming {label} call</AppText>
-      <View className="flex-row gap-sm">
-        <AppButton variant="outline" className="flex-1" onPress={() => void callManager.rejectCall(call.id).then(() => setCall(null))}>Decline</AppButton>
-        <AppButton className="flex-1" onPress={() => void callManager.answerCall(call.id).then(() => setCall(null))}>Accept</AppButton>
-      </View>
-    </View>
-  );
+  return null;
 }
 
 function ChatRoute({ route, navigation }: NativeStackScreenProps<ShellParamList, 'Chat'>) {
