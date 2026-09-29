@@ -1,6 +1,6 @@
 import { MoreVertical, Phone, Video } from 'lucide-react-native';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CallEventRow } from '@/components/chat/CallEventRow';
@@ -16,7 +16,8 @@ import { AccompanyIllustration } from '@/components/illustrations/AccompanyIllus
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
 import { useSession } from '@/features/auth';
-import { chatService, type CallEvent, type ChatMessage } from '@/features/chat/chat.service';
+import { chatPanels, mergeInitialMessages, type ConversationPhase } from '@/features/chat/chat-panels';
+import { chatService, type CallEvent, type ChatMessage, type ConversationStatus } from '@/features/chat/chat.service';
 import { refreshDiscovery } from '@/features/home/discovery-refresh';
 import { callManager } from '@/features/calls/call-manager';
 import { groupTimeline, isLiveCall } from '@/features/calls/call-presentation';
@@ -41,7 +42,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
   const [header, setHeader] = useState({ name, personId: personId ?? null, online });
   const [draft, setDraft] = useState('');
   const [otherTyping, setOtherTyping] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [phase, setPhase] = useState<ConversationPhase>('loading');
   const [error, setError] = useState<string | null>(null);
   const [callNotice, setCallNotice] = useState<string | null>(null);
   const [sendError, setSendError] = useState(false);
@@ -51,44 +52,75 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
   const { user } = useSession();
   const [canMessage, setCanMessage] = useState(false);
   const [canRespond, setCanRespond] = useState(false);
-  const [status, setStatus] = useState<string>('pending');
+  const [status, setStatus] = useState<ConversationStatus | null>(null);
   const [blocked, setBlocked] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirm, setConfirm] = useState<'block' | 'unblock' | null>(null);
   const [freshId, setFreshId] = useState<string | null>(null);
+  const openedConversation = useRef(conversationId);
+  if (openedConversation.current !== conversationId) {
+    openedConversation.current = conversationId;
+    setPhase('loading');
+    setError(null);
+    setMessages([]);
+    setCalls([]);
+    setCursor(null);
+    setStatus(null);
+    setCanMessage(false);
+    setCanRespond(false);
+    setBlocked(false);
+  }
   const allowOlder = useRef(false);
   const loadingOlder = useRef(false);
+  const loadGeneration = useRef(0);
   const listRef = useRef<FlatList<(ReturnType<typeof groupTimeline<ChatMessage>>)[number]>>(null);
 
-  async function load(next?: string | null) {
+  async function loadOlder(next: string) {
     const result = await chatService.messages(conversationId, next);
-    setMessages((current) => (next ? [...result.messages, ...current] : result.messages));
+    setMessages((current) => {
+      const ids = new Set(current.map((item) => item.id));
+      return [...result.messages.filter((item) => !ids.has(item.id)), ...current];
+    });
     setCursor(result.nextCursor);
   }
 
-  useEffect(() => {
-    let cancelled = false;
-    allowOlder.current = false;
-    chatService.get(conversationId).then((conversation) => {
-      if (!cancelled) {
-        setHeader({ name: conversation.name, personId: conversation.personId, online: conversation.online });
-        setCanMessage(conversation.canMessage);
-        setCanRespond(conversation.canRespond);
-        setStatus(conversation.status);
-      }
-    }).catch(() => undefined);
-    load()
-      .then(() => chatService.markRead(conversationId).catch(() => undefined))
-      .catch(() => {
-        if (!cancelled) setError("Couldn't load this conversation");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+  const reload = useCallback(() => {
+    const ticket = ++loadGeneration.current;
+    const id = conversationId;
+    setPhase('loading');
+    setError(null);
+    Promise.all([chatService.get(id), chatService.messages(id)]).then(([conversation, result]) => {
+      if (ticket !== loadGeneration.current) return;
+      setHeader({ name: conversation.name, personId: conversation.personId, online: conversation.online });
+      setCanMessage(conversation.canMessage);
+      setCanRespond(conversation.canRespond);
+      setStatus(conversation.status);
+      setBlocked(Boolean(conversation.blocked));
+      setMessages((current) => mergeInitialMessages(current, result.messages));
+      setCursor(result.nextCursor);
+      setPhase('ready');
+      void chatService.markRead(id).catch(() => undefined);
+    }).catch((caught: unknown) => {
+      if (ticket !== loadGeneration.current) return;
+      setError(caught instanceof ApiError && caught.status === 0 ? "You're offline" : 'Unable to load messages');
+      setPhase('error');
+    });
   }, [conversationId]);
+
+  useEffect(() => {
+    setMessages([]);
+    setCalls([]);
+    setCursor(null);
+    setStatus(null);
+    setCanMessage(false);
+    setCanRespond(false);
+    setBlocked(false);
+    allowOlder.current = false;
+    reload();
+    return () => {
+      loadGeneration.current += 1;
+    };
+  }, [reload]);
 
   useEffect(() => {
     socketService.join(conversationId);
@@ -129,7 +161,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
   }, [conversationId, user?.id]);
 
   useEffect(() => {
-    if (!header.personId) return;
+    if (phase !== 'ready' || !header.personId) return;
     let active = true;
     const loadCalls = () => {
       void chatService.callsWith(header.personId!).then((items) => {
@@ -153,7 +185,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
       active = false;
       clearInterval(timer);
     };
-  }, [header.personId]);
+  }, [conversationId, header.personId, phase]);
 
   async function startCall(kind: 'audio' | 'video') {
     if (!header.personId) return;
@@ -236,6 +268,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
     ...messages.map((message) => ({ kind: 'message' as const, id: message.id, at: message.createdAt, message })),
     ...calls.filter((call) => !isLiveCall(call.status)).map((call) => ({ kind: 'call' as const, id: call.id, at: call.createdAt, call })),
   ].sort((left, right) => right.at.localeCompare(left.at))), [messages, calls]);
+  const panels = chatPanels({ phase, status, blocked, canMessage, canRespond, hasTimeline: rows.length > 0 });
 
   useEffect(() => {
     if (!highlightCallId) return;
@@ -248,7 +281,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
   }, [highlightCallId, rows]);
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top, paddingBottom: insets.bottom + 8 }}>
+    <KeyboardAvoidingView className="flex-1 bg-background" behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom + 8 }}>
       <ChatHeader
         name={header.name}
         personId={header.personId}
@@ -256,7 +289,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
         onBack={onBack}
         actions={
           <View className="flex-row">
-            {canMessage && !blocked ? (
+            {panels.footer === 'composer' ? (
               <>
                 <AppIconButton icon={Phone} accessibilityLabel="Voice call" onPress={() => setPendingKind('audio')} />
                 <AppIconButton icon={Video} accessibilityLabel="Video call" onPress={() => setPendingKind('video')} />
@@ -268,11 +301,19 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
       />
       {callNotice ? <AppText className="px-md py-sm" variant="bodyS" tone="warning">{callNotice}</AppText> : null}
       <View className="flex-1">
-        {error ? (
+        {panels.content === 'loading' ? (
+          <View className="flex-1 items-center justify-center">
+            <IllustratedState name="loading" motion="pulse" size={140} title="Loading messages..." />
+          </View>
+        ) : panels.content === 'error' ? (
           <View className="flex-1 justify-center px-lg">
-            <IllustratedState name={illustrationForError(error)} title={error} body="Try again in a moment.">
-              <AppButton variant="outline" onPress={() => { setLoading(true); setError(null); void load().catch(() => setError("Couldn't load this conversation")).finally(() => setLoading(false)); }}>Try again</AppButton>
+            <IllustratedState name={illustrationForError(error ?? 'Unable to load messages')} title={error ?? 'Unable to load messages'}>
+              <AppButton variant="outline" onPress={reload}>Try again</AppButton>
             </IllustratedState>
+          </View>
+        ) : panels.content === 'empty' ? (
+          <View className="flex-1 items-center justify-center">
+            <IllustratedState name="chat-empty" size={150} title="No messages yet" body="Say hello when you're ready." />
           </View>
         ) : (
           <FlatList
@@ -290,9 +331,9 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
               allowOlder.current = true;
             }}
             onEndReached={() => {
-              if (!allowOlder.current || !cursor || loadingOlder.current) return;
+              if (!allowOlder.current || !cursor || loadingOlder.current || panels.content !== 'timeline') return;
               loadingOlder.current = true;
-              void load(cursor).finally(() => {
+              void loadOlder(cursor).finally(() => {
                 loadingOlder.current = false;
               });
             }}
@@ -315,23 +356,14 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
               )}
           />
         )}
-        {loading ? (
-          <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
-            <IllustratedState name="loading" motion="pulse" size={140} title="Loading messages..." />
-          </View>
-        ) : !error && rows.length === 0 ? (
-          <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
-            <IllustratedState name="chat-empty" size={150} title="No messages yet" body="Say hello when you're ready." />
-          </View>
-        ) : null}
       </View>
-      {blocked ? (
+      {panels.footer === 'blocked' ? (
         <View className="mx-md gap-sm rounded-sm bg-muted p-md">
           <AppText variant="label">Conversation unavailable</AppText>
           <AppText variant="bodyS" tone="muted">You blocked this person.</AppText>
           <AppButton variant="outline" onPress={() => setConfirm('unblock')}>Unblock</AppButton>
         </View>
-      ) : canRespond ? (
+      ) : panels.footer === 'incoming' ? (
         <View className="gap-sm px-md">
           <AppText variant="bodyM">Someone would like to connect</AppText>
           <View className="flex-row gap-sm">
@@ -339,20 +371,24 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
             <AppButton className="flex-1" onPress={() => void chatService.accept(conversationId).then(() => { setCanMessage(true); setCanRespond(false); setStatus('accepted'); })}>Accept</AppButton>
           </View>
         </View>
-      ) : canMessage ? (
+      ) : panels.footer === 'composer' ? (
         <View>
           {otherTyping ? <AppText className="px-md pb-xs" variant="caption" tone="muted">{header.name} is typing</AppText> : null}
           <MessageComposer value={draft} sending={sending} failed={sendError} onChange={(value) => { setDraft(value); socketService.typing(conversationId, value.trim().length > 0); }} onSend={() => void send()} />
         </View>
-      ) : (
+      ) : panels.footer === 'pending' ? (
         <View className="mx-md items-center gap-xs rounded-sm bg-muted p-md">
           <AccompanyIllustration name="chat-request" size={96} />
           <AppText variant="label">Request sent</AppText>
-          <AppText variant="bodyS" tone="muted">
-            {status === 'rejected' ? 'This request was declined.' : `Waiting for ${header.name} to respond.`}
-          </AppText>
+          <AppText variant="bodyS" tone="muted">Waiting for {header.name} to respond.</AppText>
         </View>
-      )}
+      ) : panels.footer === 'rejected' ? (
+        <View className="mx-md items-center gap-xs rounded-sm bg-muted p-md">
+          <AccompanyIllustration name="chat-request" size={96} />
+          <AppText variant="label">Request declined</AppText>
+          <AppText variant="bodyS" tone="muted">This request was declined.</AppText>
+        </View>
+      ) : null}
       <CallRequestDialog
         kind={pendingKind === 'video' ? 'video' : pendingKind === 'audio' ? 'voice' : null}
         name={header.name}
@@ -375,7 +411,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
           <AppButton className="flex-1" onPress={() => void (confirm === 'unblock' ? unblockPerson() : blockPerson())}>{confirm === 'unblock' ? 'Unblock' : 'Block'}</AppButton>
         </View>
       </AppDialog>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
