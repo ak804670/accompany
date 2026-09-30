@@ -12,6 +12,10 @@ import { OnlineStatus } from '@/components/home/OnlineStatus';
 import { PersonAvatar } from '@/components/home/PersonAvatar';
 import { chatService } from '@/features/chat/chat.service';
 import { formatDistance, formatRate } from '@/features/home/discovery';
+import { peekPerson } from '@/database/sqlite/memory';
+import { homeCardRepository } from '@/database/sqlite/repositories/homeCardRepository';
+import { userRepository } from '@/database/sqlite/repositories/userRepository';
+import { blockedUserRepository } from '@/database/sqlite/repositories/blockedUserRepository';
 import { peopleService, type OnlinePerson } from '@/features/home/people.service';
 
 type PersonScreenProps = {
@@ -22,7 +26,7 @@ type PersonScreenProps = {
 
 export function PersonScreen({ userId, onBack, onConversation }: PersonScreenProps) {
   const insets = useSafeAreaInsets();
-  const [person, setPerson] = useState<OnlinePerson | null>(null);
+  const [person, setPerson] = useState<OnlinePerson | null>(() => peekPerson(userId));
   const [message, setMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -30,11 +34,20 @@ export function PersonScreen({ userId, onBack, onConversation }: PersonScreenPro
 
   useEffect(() => {
     let cancelled = false;
-    peopleService.person(userId).then((value) => {
-      if (!cancelled) setPerson(value);
-    }).catch(() => {
-      if (!cancelled) setError("Couldn't load this person");
-    });
+    void (async () => {
+      const cached = await userRepository.getPerson(userId).catch(() => null)
+        ?? await homeCardRepository.find(userId).catch(() => null);
+      if (!cancelled && cached) setPerson(cached);
+      try {
+        const value = await peopleService.person(userId);
+        if (cancelled) return;
+        setPerson(value);
+        setError(null);
+        await userRepository.savePerson(value);
+      } catch {
+        if (!cancelled && !cached) setError("Couldn't load this person");
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -60,11 +73,14 @@ export function PersonScreen({ userId, onBack, onConversation }: PersonScreenPro
 
   async function block() {
     if (!person) return;
+    const previous = person;
+    setPerson({ ...person, relationship: 'blocked' });
     setPending(true);
     try {
       await peopleService.block(person.userId);
-      setPerson({ ...person, relationship: 'blocked' });
+      await blockedUserRepository.add({ userId: person.userId, name: person.name });
     } catch {
+      setPerson(previous);
       setError("Couldn't update this person");
     } finally {
       setPending(false);

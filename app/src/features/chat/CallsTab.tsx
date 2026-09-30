@@ -1,5 +1,5 @@
 import { Phone, Video } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 
 import { CallEventRow } from '@/components/chat/CallEventRow';
@@ -11,41 +11,85 @@ import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
 import { PersonAvatar } from '@/components/home/PersonAvatar';
 import { callManager } from '@/features/calls/call-manager';
+import { callRepository } from '@/database/sqlite/repositories/callRepository';
+import { subscribeLocal } from '@/database/sqlite/memory';
 import { chatService, type CallHistoryItem, type ConversationSummary } from '@/features/chat/chat.service';
+import { syncCalls } from '@/database/sync/syncEngine';
 import { ApiError } from '@/services/api';
 
 type CallsTabProps = {
+  active?: boolean;
   width: number;
+  height: number;
   query: string;
   onOpen: (item: ConversationSummary, highlightCallId: string) => void;
 };
 
-export function CallsTab({ width, query, onOpen }: CallsTabProps) {
-  const [items, setItems] = useState<CallHistoryItem[]>([]);
+export function CallsTab({ active = false, width, height, query, onOpen }: CallsTabProps) {
+  const seeded = callRepository.peek();
+  const [items, setItems] = useState<CallHistoryItem[]>(seeded ?? []);
   const [cursor, setCursor] = useState<string | null>(null);
   const [missed, setMissed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [settled, setSettled] = useState(Boolean(seeded && seeded.length > 0));
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState<CallHistoryItem | null>(null);
+  const missedRef = useRef(missed);
+  const fetchedAll = useRef(false);
+  missedRef.current = missed;
 
-  const load = useCallback(async (next?: string | null, replace = true, onlyMissed = missed) => {
+  const load = useCallback(async (next?: string | null, force = false) => {
+    const onlyMissed = missedRef.current;
     try {
-      const result = await chatService.recentCalls(next, onlyMissed);
-      setItems((current) => (replace ? result.calls : [...current, ...result.calls.filter((call) => !current.some((item) => item.id === call.id))]));
+      const result = await syncCalls(next, onlyMissed, force);
+      setItems((current) => (next
+        ? [...current, ...result.calls.filter((call) => !current.some((item) => item.id === call.id))]
+        : result.calls));
       setCursor(result.nextCursor);
       setError(null);
     } catch (caught) {
-      setError(!(caught instanceof ApiError) || caught.status === 0 ? "You're offline" : "We couldn't load calls right now.");
+      const cached = onlyMissed ? [] : callRepository.peek() ?? await callRepository.recent().catch(() => []);
+      if (cached.length > 0) setItems(cached);
+      else setError(!(caught instanceof ApiError) || caught.status === 0 ? "You're offline" : "We couldn't load calls right now.");
+    } finally {
+      setSettled(true);
     }
-  }, [missed]);
+  }, []);
 
   useEffect(() => {
-    void load(null, true, missed);
-  }, [load, missed]);
+    if (!active) return;
+    if (!missed && fetchedAll.current) return;
+    if (!missed) fetchedAll.current = true;
+    let alive = true;
+    if (!missed) {
+      void callRepository.recent().then((cached) => {
+        if (!alive || missedRef.current || cached.length === 0) return;
+        setItems(cached);
+        setSettled(true);
+      }).catch(() => undefined);
+    }
+    void load(null, true);
+    const unsubscribe = subscribeLocal('calls', () => {
+      if (!alive || missedRef.current) return;
+      const cached = callRepository.peek();
+      if (!cached || cached.length === 0) return;
+      setItems((current) => {
+        if (current.length === 0) return cached;
+        const byId = new Map(cached.map((item) => [item.id, item]));
+        const seen = new Set(current.map((item) => item.id));
+        return [...current.map((item) => byId.get(item.id) ?? item), ...cached.filter((item) => !seen.has(item.id))];
+      });
+      setSettled(true);
+    });
+    return () => {
+      alive = false;
+      unsubscribe();
+    };
+  }, [active, load, missed]);
 
   const needle = query.trim().toLowerCase();
-  const visible = items.filter((item) => item.name.toLowerCase().includes(needle));
+  const visible = items.filter((item) => (item.name ?? '').toLowerCase().includes(needle));
 
   async function confirmCall() {
     const item = pending;
@@ -66,18 +110,22 @@ export function CallsTab({ width, query, onOpen }: CallsTabProps) {
   }
 
   return (
-    <View style={{ width }}>
+    <View style={{ width, height }}>
       <View className="mb-sm flex-row gap-sm">
         <FilterChip label="All" selected={!missed} onPress={() => setMissed(false)} />
         <FilterChip label="Missed" selected={missed} onPress={() => setMissed(true)} />
       </View>
       {notice ? <AppText className="pb-sm" variant="bodyS" tone="warning">{notice}</AppText> : null}
       <FlatList
+        style={{ flex: 1 }}
         data={visible}
         keyExtractor={(item) => item.id}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(null, true).finally(() => setRefreshing(false)); }} />}
-        onEndReached={() => { if (cursor && !needle) void load(cursor, false); }}
+        onEndReached={() => { if (cursor && !needle) void load(cursor); }}
         ListEmptyComponent={
+          !settled && !error ? (
+            <IllustratedState name="loading" motion="pulse" size={140} title="Loading calls..." />
+          ) : (
           <IllustratedState
             name={error ? illustrationForError(error) : 'calls-empty'}
             title={error ?? (missed ? 'No missed calls' : 'No calls yet')}
@@ -85,6 +133,7 @@ export function CallsTab({ width, query, onOpen }: CallsTabProps) {
           >
             {error ? <AppButton variant="outline" onPress={() => void load(null, true)}>Try again</AppButton> : null}
           </IllustratedState>
+          )
         }
         renderItem={({ item }) => (
           <Pressable

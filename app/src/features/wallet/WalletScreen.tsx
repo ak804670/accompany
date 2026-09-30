@@ -8,26 +8,37 @@ import { AppButton } from '@/components/design-system/AppButton';
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
-import { walletService, type WalletSummary, type WalletTransaction } from '@/features/wallet/wallet.service';
+import { type WalletSummary, type WalletTransaction } from '@/features/wallet/wallet.service';
+import { walletRepository } from '@/database/sqlite/repositories/walletRepository';
+import { syncWallet } from '@/database/sync/syncEngine';
 
 type WalletScreenProps = { onBack: () => void; onAdd: () => void; onWithdraw: () => void };
 
 export function WalletScreen({ onBack, onAdd, onWithdraw }: WalletScreenProps) {
   const insets = useSafeAreaInsets();
-  const [summary, setSummary] = useState<WalletSummary | null>(null);
-  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+  const seeded = walletRepository.peek();
+  const [summary, setSummary] = useState<WalletSummary | null>(seeded?.summary ?? null);
+  const [transactions, setTransactions] = useState<WalletTransaction[]>(seeded?.transactions ?? []);
   const [error, setError] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(Boolean(seeded));
 
   useFocusEffect(useCallback(() => {
     let active = true;
-    void Promise.all([walletService.summary(), walletService.transactions()]).then(([wallet, history]) => {
+    void walletRepository.read().then((cached) => {
       if (!active) return;
-      setSummary(wallet);
-      setTransactions(history.transactions);
+      if (cached.summary) {
+        setSummary(cached.summary);
+        setTransactions(cached.transactions);
+        setReady(true);
+      }
+    }).catch(() => undefined);
+    void syncWallet().then((wallet) => {
+      if (!active) return;
+      setSummary(wallet.summary);
+      setTransactions(wallet.transactions);
       setError(null);
     }).catch(() => {
-      if (active) setError("Couldn't load your coins.");
+      if (active && !walletRepository.peek()) setError("Couldn't load your coins.");
     }).finally(() => {
       if (active) setReady(true);
     });

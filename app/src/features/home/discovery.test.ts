@@ -1,4 +1,4 @@
-import { mergeProfiles, nextDeckIndex, patchProfiles, shouldPrefetch, shouldCompleteSwipe, SWIPE_THRESHOLD, PREFETCH_THRESHOLD } from '@/features/home/discovery';
+import { mergeProfiles, nextDeckIndex, patchProfiles, reconciledDeck, shouldPrefetch, shouldCompleteSwipe, SWIPE_THRESHOLD, PREFETCH_THRESHOLD } from '@/features/home/discovery';
 
 describe('discovery swipe', () => {
   it('returns the card when the drag is below the threshold', () => {
@@ -41,6 +41,16 @@ describe('discovery swipe', () => {
       [{ userId: 'a', online: true }],
     );
     expect(patched).toEqual([{ userId: 'a', online: true }, { userId: 'b', online: true }]);
+  });
+
+  it('keeps the active card when a refresh arrives', () => {
+    const next = reconciledDeck(
+      [{ userId: 'a' }, { userId: 'b' }, { userId: 'c' }],
+      [{ userId: 'b', online: true }, { userId: 'd' }],
+      1,
+    );
+    expect(next.people.map((person) => person.userId)).toEqual(['a', 'b', 'c', 'd']);
+    expect(next.index).toBe(1);
   });
 
   it('keeps a short batch and an empty batch usable', () => {

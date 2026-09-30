@@ -14,7 +14,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.datingmarketplace.app",
       "infoPlist": {
-        "UIBackgroundModes": ["voip", "audio"]
+        "UIBackgroundModes": [
+          "voip",
+          "audio"
+        ]
       }
     },
     "android": {
@@ -52,7 +55,8 @@
           "locationWhenInUsePermission": "Accompany uses your location to show people nearby. Other people only see an approximate distance."
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-sqlite"
     ]
   }
 }

@@ -37,7 +37,7 @@ function ProfileGate({ colors }: { colors: { background: string } }) {
     contentStyle: { backgroundColor: colors.background },
   };
 
-  if (profileState.isLoading || !profileState.profile) {
+  if (!profileState.profile) {
     return (
       <View testID="profile-checking" className="flex-1 justify-end bg-background px-lg pb-3xl">
         <AppText variant="h1">Accompany</AppText>

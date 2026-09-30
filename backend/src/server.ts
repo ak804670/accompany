@@ -1,4 +1,5 @@
 import { Redis } from 'ioredis';
+import { Router } from 'express';
 
 import { createApp } from './app.js';
 import { readCallConfig } from './modules/calls/call-config.js';
@@ -115,9 +116,12 @@ const app = createApp({
   audit,
   nodeEnv: config.nodeEnv,
   wallet: { router: createWalletRouter(authService, wallet, process.env.ADMIN_API_KEY), webhook: createPaymentWebhook(wallet, payments) },
-  calls: callService && callConfig
-    ? { router: createCallRouter(authService, callService, callStore), webhook: createLiveKitWebhook(callConfig, callService, callStore) }
-    : undefined,
+  calls: {
+    router: createCallRouter(authService, callService, callStore),
+    webhook: callService && callConfig
+      ? createLiveKitWebhook(callConfig, callService, callStore)
+      : Router(),
+  },
   communicationWebhooks: {
     store: communicationStore,
     mailjetSecret: communicationConfig.mailjetWebhookSecret,

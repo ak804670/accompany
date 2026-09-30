@@ -162,31 +162,23 @@ export class PgCallStore {
       where += ` AND (c.created_at, c.id) < ($${params.length - 1}::timestamptz, $${params.length}::uuid)`;
     }
     params.push(limit);
-    const result = await this.pool.query<RecentCallRow>(
-      `SELECT c.id, c.call_type, c.status, c.caller_id, c.receiver_id, c.duration_seconds, c.created_at,
-              COALESCE(NULLIF(BTRIM(pr.display_name), ''), 'Someone') AS display_name,
+    const sql = (profiles: boolean) => `SELECT c.id, c.call_type, c.status, c.caller_id, c.receiver_id, c.duration_seconds, c.created_at,
+              ${profiles ? "COALESCE(NULLIF(BTRIM(pr.display_name), ''), 'Someone')" : "'Someone'"} AS display_name,
               CASE WHEN c.caller_id = $1 THEN c.receiver_id ELSE c.caller_id END AS person_id,
-              COALESCE(c.conversation_id, conv.conversation_id) AS conversation_id
+              c.conversation_id
        FROM acc.t_calls c
-       LEFT JOIN acc.m_profiles pr
+       ${profiles ? `LEFT JOIN acc.m_profiles pr
          ON pr.user_id = CASE WHEN c.caller_id = $1 THEN c.receiver_id ELSE c.caller_id END
-        AND pr.deleted_at IS NULL
-       LEFT JOIN LATERAL (
-         SELECT p1.conversation_id
-         FROM acc.p_conversation_participants p1
-         JOIN acc.p_conversation_participants p2 ON p2.conversation_id = p1.conversation_id
-         WHERE p1.user_id = $1
-           AND p2.user_id = CASE WHEN c.caller_id = $1 THEN c.receiver_id ELSE c.caller_id END
-           AND p1.left_at IS NULL
-           AND p2.left_at IS NULL
-         ORDER BY p1.joined_at DESC
-         LIMIT 1
-       ) conv ON TRUE
+        AND pr.deleted_at IS NULL` : ''}
        WHERE ${where}
        ORDER BY c.created_at DESC, c.id DESC
-       LIMIT $${params.length}`,
-      params,
-    );
+       LIMIT $${params.length}`;
+    let result;
+    try {
+      result = await this.pool.query<RecentCallRow>(sql(true), params);
+    } catch {
+      result = await this.pool.query<RecentCallRow>(sql(false), params);
+    }
     return result.rows.map((row) => ({
       id: row.id,
       callType: row.call_type,

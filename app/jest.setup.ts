@@ -119,3 +119,13 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
     removeItem: jest.fn(async () => undefined),
   },
 }));
+
+jest.mock('expo-sqlite', () => ({
+  openDatabaseAsync: jest.fn(async () => ({
+    execAsync: jest.fn(async () => undefined),
+    runAsync: jest.fn(async () => ({ changes: 0, lastInsertRowId: 0 })),
+    getAllAsync: jest.fn(async () => []),
+    getFirstAsync: jest.fn(async () => null),
+    withTransactionAsync: jest.fn(async (task: () => Promise<void>) => task()),
+  })),
+}));

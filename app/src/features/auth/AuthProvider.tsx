@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { configureApiAuth } from '@/services/api';
 import { socketService } from '@/services/realtime/socket';
 import { secureStorage } from '@/services/storage';
+import { initDatabase } from '@/database/sqlite/database';
+import { clearLocalData } from '@/database/sqlite/clear';
+import { startBackgroundSync, startRealtimeCache, stopRealtimeCache } from '@/database/sync/syncEngine';
 
 import { AuthContext, type AuthContextValue } from '@/features/auth/auth-context';
 import { authService, toAuthFailure } from '@/features/auth/services/auth.service';
@@ -19,6 +22,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     configureApiAuth({
       refresh: () => authService.refresh(),
       onSessionLost: () => {
+        stopRealtimeCache();
+        void clearLocalData().catch(() => undefined);
         if (cancelled) {
           return;
         }
@@ -53,6 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch {
         await secureStorage.clearTokens();
+        stopRealtimeCache();
+        await clearLocalData().catch(() => undefined);
         if (!cancelled) {
           setUser(null);
           setStatus('unauthenticated');
@@ -61,16 +68,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     void restore();
+    void initDatabase().catch(() => undefined);
 
     return () => {
       cancelled = true;
     };
   }, []);
 
+  const savedSession = useRef(false);
+
   useEffect(() => {
-    if (status === 'authenticated') socketService.connect();
-    if (status === 'unauthenticated') socketService.disconnect();
-  }, [status]);
+    if (status === 'authenticated') {
+      startRealtimeCache(user?.id ?? null);
+      if (!savedSession.current) {
+        savedSession.current = true;
+        startBackgroundSync();
+      }
+      socketService.connect();
+    }
+    if (status === 'unauthenticated') {
+      savedSession.current = false;
+      stopRealtimeCache();
+      socketService.disconnect();
+    }
+  }, [status, user?.id]);
 
   const requestOtp = useCallback(async (channel: AuthChannel, destination: string) => {
     setStatus('requestingOtp');
@@ -105,6 +126,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await authService.logout();
     } finally {
+      stopRealtimeCache();
+      await clearLocalData().catch(() => undefined);
       setUser(null);
       setError(null);
       setStatus('unauthenticated');

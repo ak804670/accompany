@@ -9,8 +9,11 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 
+import { QueryClientProvider } from '@tanstack/react-query';
+
 import { ActiveCallScreen } from '@/features/calls/ActiveCallScreen';
 import { callManager } from '@/features/calls/call-manager';
+import { queryClient } from '@/database/sync/queryClient';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -54,6 +57,7 @@ export function App() {
   return (
     <AppErrorBoundary>
       <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
         <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <AuthProvider>
@@ -66,6 +70,7 @@ export function App() {
           </AuthProvider>
         </SafeAreaProvider>
         </GestureHandlerRootView>
+        </QueryClientProvider>
       </ThemeProvider>
     </AppErrorBoundary>
   );

@@ -15,17 +15,18 @@ import { peopleService } from '@/features/home/people.service';
 import { useDiscoveryDeck } from '@/features/home/useDiscoveryDeck';
 import { useProfile } from '@/features/profile/hooks/useProfile';
 type HomeScreenProps = {
+  active?: boolean;
   onOpenPerson: (userId: string) => void;
 };
 
-export function HomeScreen({ onOpenPerson }: HomeScreenProps) {
+export function HomeScreen({ onOpenPerson, active = true }: HomeScreenProps) {
   const insets = useSafeAreaInsets();
   const { profile } = useProfile();
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [interestIds, setInterestIds] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [locationNote, setLocationNote] = useState<string | null>(null);
-  const { people, index, setIndex, hasMore, loading, error, retry, refresh } = useDiscoveryDeck(distanceKm, interestIds);
+  const { people, index, setIndex, hasMore, loading, error, retry, refresh } = useDiscoveryDeck(distanceKm, interestIds, active);
 
   useEffect(() => onDiscoveryRefresh(() => { void refresh(); }), [refresh]);
 
@@ -52,14 +53,14 @@ export function HomeScreen({ onOpenPerson }: HomeScreenProps) {
         <AppButton variant="outline" onPress={() => setFiltersOpen(true)}>Filter</AppButton>
       </View>
       {locationNote ? <AppText className="mt-sm" variant="caption" tone="warning">{locationNote}</AppText> : null}
-      {loading ? (
+      {loading && people.length === 0 ? (
         <View className="mt-md gap-sm">
           <View className="h-72 rounded-md bg-muted" />
           <View className="h-6 w-32 rounded-sm bg-muted" />
           <View className="h-4 w-24 rounded-sm bg-muted" />
           <AppText variant="caption" tone="muted">Loading people...</AppText>
         </View>
-      ) : error ? (
+      ) : error && people.length === 0 ? (
         <View className="mt-xl flex-1 justify-center">
           <IllustratedState name={illustrationForError(error)} title="Something went wrong." body={error}>
             <AppButton variant="outline" onPress={retry}>Try again</AppButton>

@@ -11,6 +11,7 @@ import { captureLocation } from '@/features/home/location';
 import { refreshDiscovery } from '@/features/home/discovery-refresh';
 import { useProfile } from '@/features/profile/hooks/useProfile';
 import { profileService } from '@/features/profile/services/profile.service';
+import { profileRepository } from '@/database/sqlite/repositories/profileRepository';
 import { prepareProfileImage } from '@/features/profile/services/prepare-image';
 import type { ProfileInterest } from '@/features/profile/types';
 import { profileImageConfig } from '@/services/media/image-config';
@@ -44,11 +45,23 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
   const [photoId, setPhotoId] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
+    void profileRepository.getRates().then((cached) => {
+      if (!active || !cached) return;
+      const next = { chat: rateText(cached.chat), audio: rateText(cached.audio), video: rateText(cached.video) };
+      setRates((current) => current.chat === '' && current.audio === '' && current.video === '' ? next : current);
+      setSavedRates((current) => current.chat === '' && current.audio === '' && current.video === '' ? next : current);
+    }).catch(() => undefined);
     void profileService.rates().then((value) => {
+      if (!active) return;
       const next = { chat: rateText(value.chat), audio: rateText(value.audio), video: rateText(value.video) };
       setRates(next);
       setSavedRates(next);
+      void profileRepository.saveRates(value);
     }).catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -103,7 +116,11 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
     }
     setSaving(true);
     setError(null);
+    const previous = profile;
     try {
+      if (previous && (trimmed !== previous.displayName || bio !== (previous.bio ?? ''))) {
+        setProfile({ ...previous, displayName: trimmed, bio });
+      }
       let next = profile;
       if (trimmed !== profile?.displayName || bio !== (profile?.bio ?? '')) {
         next = await profileService.update({ displayName: trimmed, bio });
@@ -119,8 +136,16 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
       if (next) setProfile(next);
       setSavedRates(rates);
       setError(null);
-      if (saved) refreshDiscovery();
+      if (saved) {
+        void profileRepository.saveRates({
+          chat: saved.chat,
+          audio: saved.audio,
+          video: saved.video,
+        });
+        refreshDiscovery();
+      }
     } catch (caught) {
+      if (previous) setProfile(previous);
       setError(profileService.failureMessage(caught));
     } finally {
       setSaving(false);

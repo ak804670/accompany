@@ -31,6 +31,11 @@ function publicCall(call: { id: string; callType: string; status: string; roomNa
   };
 }
 
+function callStamp(value: Date | string): string {
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date(0).toISOString() : date.toISOString();
+}
+
 function pageLimit(value: unknown): number {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 1) return 25;
@@ -47,12 +52,17 @@ function parseCursor(value: unknown): { at: string; id: string } | null {
   return { at, id };
 }
 
-export function createCallRouter(auth: AuthService, calls: CallService, store: PgCallStore) {
+export function createCallRouter(auth: AuthService, calls: CallService | null, store: PgCallStore) {
   const router = Router();
 
   async function userId(header: string | undefined): Promise<string> {
     const session = await auth.session(bearer(header));
     return session.user.id;
+  }
+
+  function requireCalls(): CallService {
+    if (!calls) throw new CallError(503, 'CALLS_UNAVAILABLE', 'Calls are not available right now.');
+    return calls;
   }
 
   router.post('/calls', async (request, response, next) => {
@@ -65,7 +75,7 @@ export function createCallRouter(auth: AuthService, calls: CallService, store: P
         response.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Choose a call type.' } });
         return;
       }
-      const result = await calls.create(id, personId, kind, conversationId);
+      const result = await requireCalls().create(id, personId, kind, conversationId);
       response.status(201).json({ call: publicCall(result.call), token: result.token, url: result.url });
     } catch (error) {
       sendCallError(error, response, next);
@@ -95,12 +105,13 @@ export function createCallRouter(auth: AuthService, calls: CallService, store: P
       const rows = await store.recent(id, cursor, limit + 1, request.query.filter === 'missed');
       const page = rows.slice(0, limit);
       const last = page.at(-1);
+      const stamp = last ? callStamp(last.createdAt) : null;
       response.json({
         calls: page.map((call) => ({
           id: call.id,
           callType: call.callType,
           status: call.status,
-          createdAt: call.createdAt,
+          createdAt: callStamp(call.createdAt),
           callerId: call.callerId,
           receiverId: call.receiverId,
           durationSeconds: call.durationSeconds,
@@ -108,7 +119,7 @@ export function createCallRouter(auth: AuthService, calls: CallService, store: P
           personId: call.personId,
           name: call.name,
         })),
-        nextCursor: rows.length > limit && last ? `${last.createdAt.toISOString()}|${last.id}` : null,
+        nextCursor: rows.length > limit && last && stamp ? `${stamp}|${last.id}` : null,
       });
     } catch (error) {
       sendCallError(error, response, next);
@@ -118,7 +129,7 @@ export function createCallRouter(auth: AuthService, calls: CallService, store: P
   router.get('/calls/incoming', async (request, response, next) => {
     try {
       const id = await userId(request.header('authorization'));
-      const call = await calls.incoming(id);
+      const call = await requireCalls().incoming(id);
       response.json({ call: call ? publicCall(call) : null });
     } catch (error) {
       sendCallError(error, response, next);
@@ -128,7 +139,7 @@ export function createCallRouter(auth: AuthService, calls: CallService, store: P
   router.post('/calls/:id/accept', async (request, response, next) => {
     try {
       const id = await userId(request.header('authorization'));
-      const result = await calls.accept(id, request.params.id);
+      const result = await requireCalls().accept(id, request.params.id);
       response.json({ call: publicCall(result.call), token: result.token, url: result.url });
     } catch (error) {
       sendCallError(error, response, next);
@@ -138,7 +149,7 @@ export function createCallRouter(auth: AuthService, calls: CallService, store: P
   router.post('/calls/:id/decline', async (request, response, next) => {
     try {
       const id = await userId(request.header('authorization'));
-      response.json({ call: publicCall(await calls.decline(id, request.params.id)) });
+      response.json({ call: publicCall(await requireCalls().decline(id, request.params.id)) });
     } catch (error) {
       sendCallError(error, response, next);
     }
@@ -147,7 +158,7 @@ export function createCallRouter(auth: AuthService, calls: CallService, store: P
   router.post('/calls/:id/cancel', async (request, response, next) => {
     try {
       const id = await userId(request.header('authorization'));
-      response.json({ call: publicCall(await calls.cancel(id, request.params.id)) });
+      response.json({ call: publicCall(await requireCalls().cancel(id, request.params.id)) });
     } catch (error) {
       sendCallError(error, response, next);
     }
@@ -156,7 +167,7 @@ export function createCallRouter(auth: AuthService, calls: CallService, store: P
   router.post('/calls/:id/end', async (request, response, next) => {
     try {
       const id = await userId(request.header('authorization'));
-      response.json({ call: publicCall(await calls.end(id, request.params.id)) });
+      response.json({ call: publicCall(await requireCalls().end(id, request.params.id)) });
     } catch (error) {
       sendCallError(error, response, next);
     }

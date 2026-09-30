@@ -11,23 +11,36 @@ import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
 import { PersonAvatar } from '@/components/home/PersonAvatar';
 import { refreshDiscovery } from '@/features/home/discovery-refresh';
+import { blockedUserRepository } from '@/database/sqlite/repositories/blockedUserRepository';
 import { peopleService } from '@/features/home/people.service';
 
 type BlockedPerson = { userId: string; name: string };
 
 export function BlockedPeopleScreen({ onBack }: { onBack: () => void }) {
   const insets = useSafeAreaInsets();
-  const [people, setPeople] = useState<BlockedPerson[]>([]);
-  const [loading, setLoading] = useState(true);
+  const seeded = blockedUserRepository.peek();
+  const [people, setPeople] = useState<BlockedPerson[]>(seeded ?? []);
+  const [loading, setLoading] = useState(!(seeded && seeded.length > 0));
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<BlockedPerson | null>(null);
 
   function load() {
-    setLoading(true);
+    void blockedUserRepository.list().then((cached) => {
+      if (cached.length > 0) {
+        setPeople(cached);
+        setLoading(false);
+      }
+    }).catch(() => undefined);
     peopleService.blocks().then((value) => {
       setPeople(value);
       setError(null);
-    }).catch(() => setError("Couldn't load blocked people")).finally(() => setLoading(false));
+      void blockedUserRepository.replace(value);
+    }).catch(() => {
+      setPeople((current) => {
+        if (current.length === 0) setError("Couldn't load blocked people");
+        return current;
+      });
+    }).finally(() => setLoading(false));
   }
 
   useEffect(() => {
@@ -36,10 +49,16 @@ export function BlockedPeopleScreen({ onBack }: { onBack: () => void }) {
 
   async function unblock() {
     if (!selected) return;
-    await peopleService.unblock(selected.userId);
+    const previous = people;
     setPeople((current) => current.filter((person) => person.userId !== selected.userId));
     setSelected(null);
-    refreshDiscovery();
+    try {
+      await peopleService.unblock(selected.userId);
+      await blockedUserRepository.remove(selected.userId);
+      refreshDiscovery();
+    } catch {
+      setPeople(previous);
+    }
   }
 
   return (
@@ -48,8 +67,8 @@ export function BlockedPeopleScreen({ onBack }: { onBack: () => void }) {
         <AppIconButton icon={ChevronLeft} size="lg" accessibilityLabel="Go back" onPress={onBack} />
         <AppText variant="h3">Blocked people</AppText>
       </View>
-      {loading ? <IllustratedState name="loading" motion="pulse" size={140} title="Loading blocked people..." /> : null}
-      {error ? (
+      {loading && people.length === 0 ? <IllustratedState name="loading" motion="pulse" size={140} title="Loading blocked people..." /> : null}
+      {error && people.length === 0 ? (
         <IllustratedState name={illustrationForError(error)} title={error} body="Try again in a moment.">
           <AppButton variant="outline" onPress={load}>Try again</AppButton>
         </IllustratedState>

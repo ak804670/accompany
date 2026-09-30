@@ -1,6 +1,6 @@
 export const DISCOVERY_RADII_KM = [5, 10, 25, 50] as const;
 export const SWIPE_THRESHOLD = 120;
-export const INITIAL_BATCH_SIZE = 10;
+export const INITIAL_BATCH_SIZE = 15;
 export const PREFETCH_BATCH_SIZE = 10;
 export const PREFETCH_THRESHOLD = 4;
 export const IMAGE_PREFETCH_AHEAD = 3;
@@ -23,6 +23,18 @@ export function discoveryLog(event: string, detail: Record<string, unknown>): vo
 
 export function shouldCompleteSwipe(distance: number, threshold = SWIPE_THRESHOLD): boolean {
   return Math.abs(distance) >= threshold;
+}
+
+export function homeFilterKey(distanceKm: number | null, interestIds: string[]): string {
+  return `${distanceKm ?? 'any'}:${[...interestIds].sort().join(',')}`;
+}
+
+export function reconciledDeck<T extends { userId: string }>(current: T[], incoming: T[], index: number): { people: T[]; index: number } {
+  const people = mergeProfiles(patchProfiles(current, incoming), incoming);
+  const activeId = current[index]?.userId;
+  if (!activeId) return { people, index: 0 };
+  const nextIndex = people.findIndex((person) => person.userId === activeId);
+  return { people, index: nextIndex < 0 ? Math.min(index, Math.max(people.length - 1, 0)) : nextIndex };
 }
 
 export function mergeProfiles<T extends { userId: string }>(current: T[], incoming: T[]): T[] {

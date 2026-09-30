@@ -1,8 +1,7 @@
 import { ChevronRight } from 'lucide-react-native';
 
 import { Icon } from '@/components/ui/icon';
-import { useCallback, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -13,33 +12,42 @@ import { ProfileSection } from '@/components/profile/ProfileSection';
 import { useAuth, useSession } from '@/features/auth';
 import { useTheme, type ThemePreference } from '@/theme';
 import { formatRate } from '@/features/home/discovery';
-import { profileService } from '@/features/profile/services/profile.service';
+import { profileRepository } from '@/database/sqlite/repositories/profileRepository';
+import { syncRates } from '@/database/sync/syncEngine';
 import { useProfile } from '@/features/profile/hooks/useProfile';
 
 type OwnProfileScreenProps = {
+  active?: boolean;
   onEdit: () => void;
   onBlocked: () => void;
   onWallet: () => void;
 };
 
-export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScreenProps) {
+export function OwnProfileScreen({ active = true, onEdit, onBlocked, onWallet }: OwnProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const { profile } = useProfile();
   const { user } = useSession();
   const { logout } = useAuth();
   const { preference, setPreference } = useTheme();
-  const [rates, setRates] = useState<{ chat: number | null; audio: number | null; video: number | null } | null>(null);
+  const seededRates = profileRepository.peekRates();
+  const [rates, setRates] = useState<{ chat: number | null; audio: number | null; video: number | null } | null>(seededRates);
+  const refreshed = useRef(false);
   const name = profile?.displayName?.trim() || 'Your profile';
 
-  useFocusEffect(useCallback(() => {
-    let active = true;
-    void profileService.rates().then((value) => {
-      if (active) setRates(value);
+  useEffect(() => {
+    if (!active || refreshed.current) return;
+    refreshed.current = true;
+    let alive = true;
+    void profileRepository.getRates().then((cached) => {
+      if (alive && cached) setRates(cached);
+    }).catch(() => undefined);
+    void syncRates().then((value) => {
+      if (alive) setRates(value);
     }).catch(() => undefined);
     return () => {
-      active = false;
+      alive = false;
     };
-  }, []));
+  }, [active]);
 
   return (
     <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-lg px-lg pb-xl" style={{ paddingTop: insets.top + 16 }}>

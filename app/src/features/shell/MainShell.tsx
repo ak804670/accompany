@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { callManager } from '@/features/calls/call-manager';
 import { callService } from '@/features/calls/call.service';
-import { Animated, View } from 'react-native';
+import { Animated, Easing, View } from 'react-native';
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AppButton } from '@/components/design-system/AppButton';
@@ -9,7 +9,9 @@ import { AppDialog } from '@/components/design-system/AppDialog';
 import { BottomNavigation, type MainTab } from '@/components/navigation/BottomNavigation';
 import { ChatScreen } from '@/features/chat/ChatScreen';
 import { ChatsScreen } from '@/features/chat/ChatsScreen';
-import { chatService, type ConversationSummary } from '@/features/chat/chat.service';
+import { type ConversationSummary } from '@/features/chat/chat.service';
+import { conversationRepository } from '@/database/sqlite/repositories/conversationRepository';
+import { subscribeLocal } from '@/database/sqlite/memory';
 import { HomeScreen } from '@/features/home/HomeScreen';
 import { PersonScreen } from '@/features/home/PersonScreen';
 import { peopleService } from '@/features/home/people.service';
@@ -46,9 +48,14 @@ const Stack = createNativeStackNavigator<ShellParamList>();
 
 function TabsScreen({ navigation }: NativeStackScreenProps<ShellParamList, 'Tabs'>) {
   const [tab, setTab] = useState<MainTab>('home');
+  const shown = useRef<MainTab>('home');
   const [pendingTab, setPendingTab] = useState<MainTab | null>(null);
   const [unread, setUnread] = useState(0);
-  const opacity = useRef(new Animated.Value(1)).current;
+  const opacity = useRef({
+    home: new Animated.Value(1),
+    chats: new Animated.Value(0),
+    profile: new Animated.Value(0),
+  }).current;
 
   useEffect(() => {
     const beat = () => {
@@ -61,23 +68,36 @@ function TabsScreen({ navigation }: NativeStackScreenProps<ShellParamList, 'Tabs
 
   useEffect(() => {
     const refresh = () => {
-      void chatService.list().then((result) => setUnread(result.unread)).catch(() => undefined);
+      void conversationRepository.unread().then(setUnread).catch(() => undefined);
     };
     refresh();
-    return subscribeRealtime((event) => {
+    const unsubscribeLocal = subscribeLocal('conversations', refresh);
+    const unsubscribeRealtime = subscribeRealtime((event) => {
       if (event.type === 'message' || event.type === 'read' || event.type === 'NEW_MESSAGE' || event.type === 'MESSAGE_READ' || event.type === 'CHAT_REQUEST_RECEIVED' || event.type === 'CHAT_REQUEST_ACCEPTED') refresh();
     });
-  }, [tab]);
+    return () => {
+      unsubscribeLocal();
+      unsubscribeRealtime();
+    };
+  }, []);
 
   function changeTab(next: MainTab) {
-    if (next === tab) return;
+    const from = shown.current;
+    if (next === from) return;
     if (tab === 'profile' && profileIsDirty()) {
       setPendingTab(next);
       return;
     }
-    Animated.timing(opacity, { toValue: 0, duration: 90, useNativeDriver: true }).start(() => {
-      setTab(next);
-      Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+    shown.current = next;
+    Animated.parallel(
+      (['home', 'chats', 'profile'] as const).map((name) => Animated.timing(opacity[name], {
+        toValue: name === next ? 1 : 0,
+        duration: 200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      })),
+    ).start(({ finished }) => {
+      if (finished && shown.current === next) setTab(next);
     });
   }
 
@@ -93,17 +113,17 @@ function TabsScreen({ navigation }: NativeStackScreenProps<ShellParamList, 'Tabs
 
   return (
     <View className="flex-1 bg-background">
-      <Animated.View className="flex-1" style={{ opacity }}>
-        <View className="flex-1" style={{ display: tab === 'home' ? 'flex' : 'none' }}>
-          <HomeScreen onOpenPerson={(userId) => navigation.navigate('Person', { userId })} />
-        </View>
-        <View className="absolute inset-0" style={{ display: tab === 'chats' ? 'flex' : 'none' }}>
-          <ChatsScreen onOpen={openConversation} />
-        </View>
-        <View className="absolute inset-0" style={{ display: tab === 'profile' ? 'flex' : 'none' }}>
-          <OwnProfileScreen onEdit={() => navigation.navigate('EditProfile')} onBlocked={() => navigation.navigate('BlockedPeople')} onWallet={() => navigation.navigate('Wallet')} />
-        </View>
-      </Animated.View>
+      <View className="flex-1">
+        <Animated.View pointerEvents={tab === 'home' ? 'auto' : 'none'} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: opacity.home }}>
+          <HomeScreen active={tab === 'home'} onOpenPerson={(userId) => navigation.navigate('Person', { userId })} />
+        </Animated.View>
+        <Animated.View pointerEvents={tab === 'chats' ? 'auto' : 'none'} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: opacity.chats }}>
+          <ChatsScreen active={tab === 'chats'} onOpen={openConversation} />
+        </Animated.View>
+        <Animated.View pointerEvents={tab === 'profile' ? 'auto' : 'none'} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: opacity.profile }}>
+          <OwnProfileScreen active={tab === 'profile'} onEdit={() => navigation.navigate('EditProfile')} onBlocked={() => navigation.navigate('BlockedPeople')} onWallet={() => navigation.navigate('Wallet')} />
+        </Animated.View>
+      </View>
       <BottomNavigation value={tab} unread={unread} onChange={changeTab} />
       <AppDialog open={pendingTab !== null} onOpenChange={(open) => { if (!open) setPendingTab(null); }} title="Discard changes?" description="Your profile edits have not been saved.">
         <View className="flex-row gap-sm">

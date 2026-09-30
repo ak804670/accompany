@@ -191,6 +191,7 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
       const id = await userId(request.header('authorization'));
       const result = await pool.query(
         `SELECT c.id, c.status, c.created_by, other_user.user_id AS person_id, pr.display_name,
+                last_message.content, COALESCE(last_message.created_at, c.created_at) AS created_at,
                 (presence.last_seen_at > NOW() - INTERVAL '45 seconds') AS online
          FROM acc.conversations c
          JOIN acc.p_conversation_participants mine
@@ -198,6 +199,12 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
          JOIN acc.p_conversation_participants other_user
            ON other_user.conversation_id = c.id AND other_user.user_id <> $1 AND other_user.left_at IS NULL
          JOIN acc.m_profiles pr ON pr.user_id = other_user.user_id
+         LEFT JOIN LATERAL (
+           SELECT content, created_at FROM acc.messages
+           WHERE conversation_id = c.id AND deleted_at IS NULL
+           ORDER BY created_at DESC
+           LIMIT 1
+         ) last_message ON TRUE
          LEFT JOIN acc.presence presence ON presence.user_id = other_user.user_id
          WHERE c.id = $2 AND c.status IN ('pending', 'active', 'rejected')`,
         [id, request.params.id],
