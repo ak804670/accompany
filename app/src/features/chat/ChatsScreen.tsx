@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChatListItem } from '@/components/chat/ChatListItem';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
+import { BrandIcon } from '@/components/icons/BrandIcon';
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { illustrationForError, type IllustrationName } from '@/assets/illustrations/illustrationRegistry';
 import { CallsTab } from '@/features/chat/CallsTab';
@@ -72,13 +73,16 @@ export function ChatsScreen({ onOpen }: ChatsScreenProps) {
   return (
     <View className="flex-1 bg-background px-lg" style={{ paddingTop: insets.top + 16 }}>
       <AppText variant="h2">Chats</AppText>
-      <TextInput
-        value={query}
-        onChangeText={setQuery}
-        placeholder={tab === 'requests' ? 'Search requests' : tab === 'calls' ? 'Search calls' : 'Search conversations'}
-        accessibilityLabel={tab === 'requests' ? 'Search requests' : tab === 'calls' ? 'Search calls' : 'Search conversations'}
-        className="mt-md h-12 rounded-sm border border-input bg-background px-3 text-foreground"
-      />
+      <View className="mt-md h-12 flex-row items-center gap-sm rounded-sm border border-input bg-background px-3">
+        <BrandIcon name="search" size={18} />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder={tab === 'requests' ? 'Search requests' : tab === 'calls' ? 'Search calls' : 'Search conversations'}
+          accessibilityLabel={tab === 'requests' ? 'Search requests' : tab === 'calls' ? 'Search calls' : 'Search conversations'}
+          className="h-12 flex-1 text-foreground"
+        />
+      </View>
       <View className="mt-md border-b border-border">
         <View className="flex-row">
           <ChatTabButton label={requestCount > 0 ? `Requests (${requestCount})` : 'Requests'} active={tab === 'requests'} onPress={() => show('requests')} />

@@ -1,6 +1,7 @@
+/** Color baked into the illustration SVG files. Not the live brand primary. */
 const ACCENT = '#7A4E32';
 
-/** Replaces the unDraw accent with the active Accompany color. */
+/** Replaces the baked illustration accent with the active Accompany color. */
 export function tintIllustration(svg: string, accent: string): string {
   if (accent.toLowerCase() === ACCENT.toLowerCase()) return svg;
   return svg.replaceAll(ACCENT, accent).replaceAll(ACCENT.toLowerCase(), accent);

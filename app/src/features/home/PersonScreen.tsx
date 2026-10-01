@@ -1,4 +1,3 @@
-import { ChevronLeft } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -76,7 +75,7 @@ export function PersonScreen({ userId, onBack, onConversation }: PersonScreenPro
 
   return (
     <View className="flex-1 bg-background px-lg" style={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }}>
-      <AppIconButton icon={ChevronLeft} size="lg" accessibilityLabel="Go back" onPress={onBack} />
+      <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
       {person ? (
         <View className="mt-lg flex-1 gap-md">
           <PersonAvatar userId={person.userId} name={person.name} size={120} />

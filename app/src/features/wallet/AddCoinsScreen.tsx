@@ -1,4 +1,3 @@
-import { ChevronLeft } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,7 +35,7 @@ export function AddCoinsScreen({ onBack }: { onBack: () => void }) {
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top + 8 }}>
     <View className="flex-row items-center gap-sm px-sm">
-      <AppIconButton icon={ChevronLeft} size="lg" accessibilityLabel="Go back" onPress={onBack} />
+      <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
       <AppText variant="h3">Add coins</AppText>
     </View>
     <ScrollView className="flex-1" contentContainerClassName="gap-md px-lg pb-xl">

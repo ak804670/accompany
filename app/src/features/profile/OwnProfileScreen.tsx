@@ -1,6 +1,3 @@
-import { ChevronRight } from 'lucide-react-native';
-
-import { Icon } from '@/components/ui/icon';
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -8,6 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
+import { BrandIcon } from '@/components/icons/BrandIcon';
+import { Text } from '@/components/ui/text';
 import { PersonAvatar } from '@/components/home/PersonAvatar';
 import { ProfileSection } from '@/components/profile/ProfileSection';
 import { useAuth, useSession } from '@/features/auth';
@@ -48,7 +47,12 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
         <PersonAvatar userId={user?.id} name={name} size={96} />
         <AppText variant="h3">{name}</AppText>
         {profile?.bio ? <AppText variant="bodyM" tone="muted" className="text-center">{profile.bio}</AppText> : null}
-        <AppButton variant="outline" onPress={onEdit}>Edit profile</AppButton>
+        <AppButton variant="outline" onPress={onEdit}>
+          <View className="flex-row items-center gap-xs">
+            <BrandIcon name="edit" size={16} />
+            <Text>Edit profile</Text>
+          </View>
+        </AppButton>
       </View>
       <ProfileSection title="Profile information">
         <Info label="Name" value={name} />
@@ -72,11 +76,14 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
       </ProfileSection>
       <ProfileSection title="Coins">
         <Pressable accessibilityRole="button" accessibilityLabel="Coin balance" className="min-h-12 flex-row items-center justify-between" onPress={onWallet}>
-          <View>
-            <AppText variant="label">Wallet</AppText>
-            <AppText variant="bodyS" tone="muted">Add, spend, and withdraw coins</AppText>
+          <View className="flex-row items-center gap-sm">
+            <BrandIcon name="wallet" size={22} />
+            <View>
+              <AppText variant="label">Wallet</AppText>
+              <AppText variant="bodyS" tone="muted">Add, spend, and withdraw coins</AppText>
+            </View>
           </View>
-          <Icon as={ChevronRight} size={18} className="text-muted-foreground" />
+          <BrandIcon name="chevron-right" size={18} />
         </Pressable>
       </ProfileSection>
       <ProfileSection title="Privacy and safety">
@@ -85,7 +92,7 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
             <AppText variant="label">Blocked people</AppText>
             <AppText variant="bodyS" tone="muted">Manage blocked people</AppText>
           </View>
-          <Icon as={ChevronRight} size={18} className="text-muted-foreground" />
+          <BrandIcon name="chevron-right" size={18} />
         </Pressable>
       </ProfileSection>
       <ProfileSection title="Appearance">

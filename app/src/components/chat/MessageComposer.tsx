@@ -1,4 +1,3 @@
-import { Plus } from 'lucide-react-native';
 import { TextInput, View } from 'react-native';
 
 import { AppButton } from '@/components/design-system/AppButton';
@@ -18,7 +17,7 @@ export function MessageComposer({ value, sending, failed, disabled = false, onCh
   return (
     <View className="gap-xs px-md pt-sm">
       <View className="flex-row items-center gap-sm">
-        <AppIconButton icon={Plus} accessibilityLabel="Add" />
+        <AppIconButton icon="add" accessibilityLabel="Add" />
         <TextInput
           value={value}
           onChangeText={onChange}

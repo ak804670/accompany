@@ -1,4 +1,3 @@
-import { MoreVertical, Phone, Video } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -291,11 +290,11 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
           <View className="flex-row">
             {panels.footer === 'composer' ? (
               <>
-                <AppIconButton icon={Phone} accessibilityLabel="Voice call" onPress={() => setPendingKind('audio')} />
-                <AppIconButton icon={Video} accessibilityLabel="Video call" onPress={() => setPendingKind('video')} />
+                <AppIconButton icon="call" accessibilityLabel="Voice call" onPress={() => setPendingKind('audio')} />
+                <AppIconButton icon="video-call" accessibilityLabel="Video call" onPress={() => setPendingKind('video')} />
               </>
             ) : null}
-            <AppIconButton icon={MoreVertical} accessibilityLabel="Conversation menu" onPress={() => setMenuOpen(true)} />
+            <AppIconButton icon="more" accessibilityLabel="Conversation menu" onPress={() => setMenuOpen(true)} />
           </View>
         }
       />

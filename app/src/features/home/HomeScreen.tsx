@@ -5,6 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBottomSheet } from '@/components/design-system/AppBottomSheet';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
+import { BrandIcon } from '@/components/icons/BrandIcon';
+import { Text } from '@/components/ui/text';
 import { DiscoveryDeck } from '@/components/home/DiscoveryDeck';
 import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
@@ -49,7 +51,12 @@ export function HomeScreen({ onOpenPerson }: HomeScreenProps) {
           <AppText variant="h2">Home</AppText>
           <AppText variant="bodyM" tone="muted" className="mt-xs">People available now</AppText>
         </View>
-        <AppButton variant="outline" onPress={() => setFiltersOpen(true)}>Filter</AppButton>
+        <AppButton variant="outline" onPress={() => setFiltersOpen(true)}>
+          <View className="flex-row items-center gap-xs">
+            <BrandIcon name="filter" size={16} />
+            <Text>Filter</Text>
+          </View>
+        </AppButton>
       </View>
       {locationNote ? <AppText className="mt-sm" variant="caption" tone="warning">{locationNote}</AppText> : null}
       {loading ? (

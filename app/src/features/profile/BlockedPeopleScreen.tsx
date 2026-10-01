@@ -1,4 +1,3 @@
-import { ChevronLeft } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -45,7 +44,7 @@ export function BlockedPeopleScreen({ onBack }: { onBack: () => void }) {
   return (
     <View className="flex-1 bg-background px-lg" style={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }}>
       <View className="flex-row items-center gap-sm">
-        <AppIconButton icon={ChevronLeft} size="lg" accessibilityLabel="Go back" onPress={onBack} />
+        <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
         <AppText variant="h3">Blocked people</AppText>
       </View>
       {loading ? <IllustratedState name="loading" motion="pulse" size={140} title="Loading blocked people..." /> : null}

@@ -1,4 +1,3 @@
-import { ChevronLeft } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -7,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
+import { BrandIcon } from '@/components/icons/BrandIcon';
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { walletService, type WalletSummary, type WalletTransaction } from '@/features/wallet/wallet.service';
 
@@ -37,12 +37,15 @@ export function WalletScreen({ onBack, onAdd, onWithdraw }: WalletScreenProps) {
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top + 8 }}>
     <View className="flex-row items-center gap-sm px-sm">
-      <AppIconButton icon={ChevronLeft} size="lg" accessibilityLabel="Go back" onPress={onBack} />
+      <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
       <AppText variant="h3">Wallet</AppText>
     </View>
     <ScrollView className="flex-1" contentContainerClassName="gap-lg px-lg pb-xl">
       <View className="items-center gap-xs rounded-md border border-border bg-card p-lg">
-        <AppText variant="caption" tone="muted">Coin balance</AppText>
+        <View className="flex-row items-center gap-xs">
+          <BrandIcon name="coins" size={18} />
+          <AppText variant="caption" tone="muted">Coin balance</AppText>
+        </View>
         <AppText variant="h1">{summary ? summary.availableCoins.toLocaleString('en-IN') : '—'}</AppText>
         <AppText variant="bodyS" tone="muted">Coins</AppText>
         <AppText variant="caption" tone="muted">{summary ? `${summary.earnedCoins} earned · ${summary.heldCoins} pending` : ''}</AppText>

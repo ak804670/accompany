@@ -1,10 +1,10 @@
 import { fittedSize, tintIllustration } from '@/assets/illustrations/tint';
 
 describe('unDraw illustrations', () => {
-  it('keeps the light accent and swaps it for dark mode', () => {
+  it('keeps the baked illustration accent and swaps it for the active brand color', () => {
     const svg = '<svg fill="#7A4E32" viewBox="0 0 200 100"></svg>';
     expect(tintIllustration(svg, '#7A4E32')).toBe(svg);
-    expect(tintIllustration(svg, '#C6A588')).toBe('<svg fill="#C6A588" viewBox="0 0 200 100"></svg>');
+    expect(tintIllustration(svg, '#C7377A')).toBe('<svg fill="#C7377A" viewBox="0 0 200 100"></svg>');
   });
 
   it('fits a wide illustration inside the requested size', () => {

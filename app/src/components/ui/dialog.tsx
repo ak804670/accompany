@@ -1,8 +1,7 @@
-import { Icon } from '@/components/ui/icon';
+import { BrandIcon } from '@/components/icons/BrandIcon';
 import { NativeOnlyAnimatedView } from '@/components/ui/native-only-animated-view';
 import { cn } from '@/lib/utils';
 import * as DialogPrimitive from '@rn-primitives/dialog';
-import { X } from 'lucide-react-native';
 import * as React from 'react';
 import { Platform, Text, View, type GestureResponderEvent, type ViewProps } from 'react-native';
 import { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
@@ -91,10 +90,7 @@ function DialogContent({
               })
             )}
             hitSlop={12}>
-            <Icon
-              as={X}
-              className={cn('size-4 shrink-0 text-accent-foreground web:pointer-events-none')}
-            />
+            <BrandIcon name="close" size={16} />
             <Text className="sr-only">Close</Text>
           </DialogPrimitive.Close>
         </DialogPrimitive.Content>

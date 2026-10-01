@@ -1,17 +1,19 @@
-import type { LucideIcon } from 'lucide-react-native';
+import type { BrandIconName } from '@/assets/icons/registry';
 
 import { AppButton, type AppButtonProps } from '@/components/design-system/AppButton';
-import { Icon } from '@/components/ui/icon';
+import { BrandIcon } from '@/components/icons/BrandIcon';
 
 type AppIconButtonProps = Omit<AppButtonProps, 'children' | 'variant'> & {
-  icon: LucideIcon;
+  icon: BrandIconName;
   accessibilityLabel: string;
 };
 
-export function AppIconButton({ icon, accessibilityLabel, ...props }: AppIconButtonProps) {
+export function AppIconButton({ icon, accessibilityLabel, size = 'md', ...props }: AppIconButtonProps) {
+  const iconSize = size === 'lg' ? 22 : 18;
+
   return (
-    <AppButton variant="icon" accessibilityLabel={accessibilityLabel} {...props}>
-      <Icon as={icon} className="size-4" />
+    <AppButton variant="icon" size={size} accessibilityLabel={accessibilityLabel} {...props}>
+      <BrandIcon name={icon} size={iconSize} />
     </AppButton>
   );
 }

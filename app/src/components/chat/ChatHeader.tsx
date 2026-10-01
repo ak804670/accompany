@@ -1,4 +1,3 @@
-import { ChevronLeft } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
@@ -18,7 +17,7 @@ type ChatHeaderProps = {
 export function ChatHeader({ name, personId, online, onBack, actions }: ChatHeaderProps) {
   return (
     <View className="flex-row items-center gap-sm border-b border-border px-md py-sm">
-      <AppIconButton icon={ChevronLeft} size="lg" accessibilityLabel="Go back" onPress={onBack} />
+      <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
       <PersonAvatar userId={personId} name={name} size={40} />
       <View className="flex-1">
         <AppText variant="label">{name}</AppText>

@@ -5,6 +5,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
+import { BrandIcon } from '@/components/icons/BrandIcon';
+import { Text } from '@/components/ui/text';
 import { AccompanyIllustration } from '@/components/illustrations/AccompanyIllustration';
 import { OnboardingFrame } from '@/features/profile/components/OnboardingFrame';
 import { useProfile } from '@/features/profile/hooks/useProfile';
@@ -173,8 +175,18 @@ export function PhotoScreen({ navigation }: Props) {
         <View className="gap-sm pt-lg">
           {canAdd ? (
             <>
-              <AppButton variant="outline" disabled={status !== null} onPress={() => void choose('camera')}>Take a photo</AppButton>
-              <AppButton variant="outline" disabled={status !== null} onPress={() => void choose('gallery')}>Add photo</AppButton>
+              <AppButton variant="outline" disabled={status !== null} onPress={() => void choose('camera')}>
+                <View className="flex-row items-center gap-xs">
+                  <BrandIcon name="camera" size={16} />
+                  <Text>Take a photo</Text>
+                </View>
+              </AppButton>
+              <AppButton variant="outline" disabled={status !== null} onPress={() => void choose('gallery')}>
+                <View className="flex-row items-center gap-xs">
+                  <BrandIcon name="gallery" size={16} />
+                  <Text>Add photo</Text>
+                </View>
+              </AppButton>
             </>
           ) : null}
           <AppText variant="label">Photo tips</AppText>

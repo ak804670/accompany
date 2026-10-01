@@ -1,4 +1,3 @@
-import { Phone, Video } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 
@@ -99,7 +98,7 @@ export function CallsTab({ width, query, onOpen }: CallsTabProps) {
               <CallEventRow stacked call={item} viewerId={item.callerId === item.personId ? item.receiverId : item.callerId} />
             </View>
             <AppIconButton
-              icon={item.callType === 'VIDEO' ? Video : Phone}
+              icon={item.callType === 'VIDEO' ? 'video-call' : 'call'}
               accessibilityLabel={item.callType === 'VIDEO' ? `Video call ${item.name}` : `Voice call ${item.name}`}
               onPress={() => setPending(item)}
             />

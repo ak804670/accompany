@@ -1,17 +1,17 @@
-import { House, MessageCircle, User } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import type { BrandIconName } from '@/assets/icons/registry';
 import { UnreadBadge } from '@/components/chat/UnreadBadge';
 import { AppText } from '@/components/design-system/AppText';
-import { Icon } from '@/components/ui/icon';
+import { BrandIcon } from '@/components/icons/BrandIcon';
 
 export type MainTab = 'home' | 'chats' | 'profile';
 
-const items: Array<{ id: MainTab; label: string; icon: typeof House }> = [
-  { id: 'home', label: 'Home', icon: House },
-  { id: 'chats', label: 'Chats', icon: MessageCircle },
-  { id: 'profile', label: 'Profile', icon: User },
+const items: Array<{ id: MainTab; label: string; icon: BrandIconName }> = [
+  { id: 'home', label: 'Home', icon: 'home' },
+  { id: 'chats', label: 'Chats', icon: 'chat' },
+  { id: 'profile', label: 'Profile', icon: 'profile' },
 ];
 
 type BottomNavigationProps = {
@@ -39,7 +39,7 @@ export function BottomNavigation({ value, unread, onChange }: BottomNavigationPr
             className={`min-h-14 flex-1 items-center justify-center gap-xs rounded-sm ${active ? 'bg-muted' : ''}`}
             onPress={() => onChange(item.id)}
           >
-            <Icon as={item.icon} size={22} className={active ? 'text-primary' : 'text-muted-foreground'} />
+            <BrandIcon name={item.icon} size={22} />
             <AppText variant="caption" tone={active ? 'primary' : 'muted'}>{item.label}</AppText>
             {item.id === 'chats' && unread > 0 ? <UnreadBadge count={unread} /> : null}
           </Pressable>
