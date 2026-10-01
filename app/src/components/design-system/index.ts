@@ -14,3 +14,8 @@ export { AppInput } from '@/components/design-system/AppInput';
 export { AppSeparator } from '@/components/design-system/AppSeparator';
 export { AppText } from '@/components/design-system/AppText';
 export { AppToastHost, showToast } from '@/components/design-system/AppToast';
+export {
+  BrandLogo,
+  type BrandLogoProps,
+  type BrandLogoSize,
+} from '@/components/design-system/BrandLogo';

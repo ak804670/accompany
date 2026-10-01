@@ -2,6 +2,7 @@ import { View } from 'react-native';
 
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
+import { BrandLogo } from '@/components/design-system/BrandLogo';
 import { useTheme, type ThemePreference } from '@/theme';
 
 const themeOptions: ThemePreference[] = ['light', 'dark', 'system'];
@@ -12,7 +13,7 @@ export function FoundationScreen() {
   return (
     <View className="flex-1 gap-lg bg-background px-md py-lg">
       <View className="gap-sm">
-        <AppText variant="h1">Accompany</AppText>
+        <BrandLogo size="lg" />
         <AppText variant="bodyM" tone="muted">
           Foundation
         </AppText>

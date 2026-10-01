@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
-import { Animated, FlatList, Pressable, RefreshControl, TextInput, View } from 'react-native';
+import { Animated, FlatList, Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChatListItem } from '@/components/chat/ChatListItem';
@@ -23,7 +23,7 @@ const TABS: ChatTab[] = ['requests', 'conversations', 'calls'];
 export function ChatsScreen({ onOpen }: ChatsScreenProps) {
   const insets = useSafeAreaInsets();
   const [pageWidth, setPageWidth] = useState(0);
-  const pager = useRef<Animated.ScrollView>(null);
+  const pager = useRef<ScrollView>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
   const [items, setItems] = useState<ConversationSummary[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);

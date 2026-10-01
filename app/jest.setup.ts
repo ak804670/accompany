@@ -119,3 +119,30 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
     removeItem: jest.fn(async () => undefined),
   },
 }));
+
+jest.mock('react-native-reanimated', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const React = require('react') as typeof import('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const RN = require('react-native') as typeof import('react-native');
+
+  return {
+    __esModule: true,
+    default: {
+      View: RN.View,
+      Text: RN.Text,
+      ScrollView: RN.ScrollView,
+      createAnimatedComponent: (c: unknown) => c,
+    },
+    useSharedValue: (init: unknown) => ({ value: init }),
+    useAnimatedStyle: (fn: () => Record<string, unknown>) => fn() || {},
+    withTiming: (toValue: unknown) => toValue,
+    withRepeat: (anim: unknown) => anim,
+    withSpring: (toValue: unknown) => toValue,
+    withSequence: (...anims: unknown[]) => anims[0],
+    withDelay: (_delay: unknown, anim: unknown) => anim,
+    cancelAnimation: jest.fn(),
+    runOnJS: (fn: unknown) => fn,
+    runOnUI: (fn: unknown) => fn,
+  };
+});

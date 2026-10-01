@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
+import { BrandLogo } from '@/components/design-system/BrandLogo';
 import { useAuth } from '@/features/auth';
 
 export function AuthenticatedHomeScreen() {
@@ -15,11 +16,9 @@ export function AuthenticatedHomeScreen() {
     <View
       testID="authenticated-home"
       className="flex-1 justify-between bg-background px-lg"
-      style={{ paddingTop: insets.top + 48, paddingBottom: insets.bottom + 24 }}>
+      style={{ paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }}>
       <View className="gap-md">
-        <AppText variant="caption" tone="muted">
-          Accompany
-        </AppText>
+        <BrandLogo size="md" />
         <AppText variant="h1">You are in</AppText>
         <AppText variant="bodyL" tone="muted">
           Find someone you might enjoy talking with.

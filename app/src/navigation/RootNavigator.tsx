@@ -5,6 +5,7 @@ import { View } from 'react-native';
 
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
+import { BrandLogo } from '@/components/design-system/BrandLogo';
 import { useSession } from '@/features/auth';
 import { OnboardingNavigator } from '@/features/profile/OnboardingNavigator';
 import { useProfile } from '@/features/profile/hooks/useProfile';
@@ -25,7 +26,7 @@ function SessionChecking() {
         <View className="h-3 w-40 bg-muted" />
         <View className="h-3 w-24 bg-muted" />
       </View>
-      <AppText variant="h1">Accompany</AppText>
+      <BrandLogo size="lg" />
     </View>
   );
 }
@@ -40,7 +41,7 @@ function ProfileGate({ colors }: { colors: { background: string } }) {
   if (profileState.isLoading || !profileState.profile) {
     return (
       <View testID="profile-checking" className="flex-1 justify-end bg-background px-lg pb-3xl">
-        <AppText variant="h1">Accompany</AppText>
+        <BrandLogo size="lg" />
         {profileState.error ? (
           <AppButton className="mt-lg" onPress={() => void profileState.refresh()}>Try again</AppButton>
         ) : null}

@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
+import { BrandLogo } from '@/components/design-system/BrandLogo';
 import { AccompanyIllustration } from '@/components/illustrations/AccompanyIllustration';
 
 import type { AuthStackParamList } from '@/features/auth/navigation';
@@ -16,11 +17,9 @@ export function WelcomeScreen({ navigation }: WelcomeScreenProps) {
   return (
     <View
       className="flex-1 justify-between bg-background px-lg"
-      style={{ paddingTop: insets.top + 48, paddingBottom: insets.bottom + 24 }}>
+      style={{ paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }}>
       <View className="gap-lg">
-        <AppText variant="caption" tone="muted">
-          Accompany
-        </AppText>
+        <BrandLogo size="md" />
         <AccompanyIllustration name="welcome" size={148} motion="enter" />
         <AppText variant="display">Sometimes you just want someone around.</AppText>
         <AppText variant="bodyL" tone="muted">

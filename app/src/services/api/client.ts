@@ -107,7 +107,7 @@ export function createApiClient(deps: ApiClientDeps): ApiClient {
       ...fetchInit,
       method,
       headers,
-      body: rawBody ? rawBody : body !== undefined ? JSON.stringify(body) : undefined,
+      body: (rawBody ? rawBody : body !== undefined ? JSON.stringify(body) : undefined) as BodyInit | undefined,
     });
 
     if (response.status === 401 && useAuth && !retried) {
