@@ -1,5 +1,7 @@
 process.env.EXPO_PUBLIC_API_BASE_URL ??= 'http://127.0.0.1:4000';
 
+require('react-native-gesture-handler/jestSetup');
+
 jest.mock('lucide-react-native', () => {
   // Jest mock factories run before ESM imports are available.
   // eslint-disable-next-line @typescript-eslint/no-require-imports

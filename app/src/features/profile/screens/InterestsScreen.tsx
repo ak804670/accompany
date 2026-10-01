@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { ScrollView } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { InterestTagInput } from '@/components/profile/InterestTagInput';
+import { InterestTagInput, isUuid } from '@/components/profile/InterestTagInput';
 import { OnboardingFrame } from '@/features/profile/components/OnboardingFrame';
 import { useProfile } from '@/features/profile/hooks/useProfile';
 import type { OnboardingStackParamList } from '@/features/profile/navigation';
@@ -42,8 +43,8 @@ export function InterestsScreen({ navigation }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const interestIds = selected.flatMap((item) => (item.id ? [item.id] : []));
-      const names = selected.filter((item) => !item.id).map((item) => item.name);
+      const interestIds = selected.flatMap((item) => (item.id && isUuid(item.id) ? [item.id] : []));
+      const names = selected.filter((item) => !item.id || !isUuid(item.id)).map((item) => item.name.trim());
       setProfile(await profileService.saveInterests(interestIds, names));
       navigation.navigate('Preferences');
     } catch (caught) {
@@ -54,16 +55,34 @@ export function InterestsScreen({ navigation }: Props) {
   }
 
   return (
-    <OnboardingFrame step={3} title="Interests" subtitle="Choose what you like talking about." onBack={() => navigation.navigate('About')} onContinue={() => void continueNext()} loading={loading} error={error}>
-      <InterestTagInput
-        options={options}
-        selected={selected}
-        query={query}
-        onQueryChange={setQuery}
-        onToggle={toggle}
-        onAddCustom={(name) => setSelected((current) => [...current, { name }])}
-        onRemove={(name) => setSelected((current) => current.filter((item) => item.name !== name))}
-      />
+    <OnboardingFrame
+      step={5}
+      title="Choose 5 things you're really into"
+      subtitle="You can select up to 5 interests for your profile."
+      onBack={() => navigation.navigate('About')}
+      onContinue={() => void continueNext()}
+      loading={loading}
+      disabled={selected.length === 0 || loading}
+      error={error}
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerClassName="pb-md"
+        className="flex-1"
+      >
+        <InterestTagInput
+          options={options}
+          selected={selected}
+          query={query}
+          onQueryChange={setQuery}
+          onToggle={toggle}
+          onAddCustom={(name) => setSelected((current) => [...current, { name }])}
+          onRemove={(name) => setSelected((current) => current.filter((item) => item.name !== name))}
+        />
+      </ScrollView>
     </OnboardingFrame>
   );
 }
+
+export default InterestsScreen;

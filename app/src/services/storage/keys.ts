@@ -9,4 +9,5 @@ export const preferenceKeys = {
   deviceInformation: 'device.information',
   userPreferences: 'user.preferences',
   locationName: 'user.locationName',
+  gender: 'user.gender',
 } as const;

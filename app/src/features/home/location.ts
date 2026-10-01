@@ -1,7 +1,19 @@
 import { preferenceKeys, preferencesStorage } from '@/services/storage';
 
+export type LocationDetail = {
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+};
+
 export type LocationResult =
-  | { ok: true; latitude: number; longitude: number; placeName?: string | null }
+  | ({
+      ok: true;
+      placeName?: string | null;
+    } & LocationDetail)
   | { ok: false; message: string };
 
 export function formatAddress(address?: {
@@ -27,13 +39,22 @@ export async function captureLocation(): Promise<LocationResult> {
     }
     const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
     let placeName: string | null = null;
+    let city = 'Jodhpur';
+    let state = 'Rajasthan';
+    let country = 'India';
+    let address = 'Jodhpur, Rajasthan, India';
     try {
       const addresses = await Location.reverseGeocodeAsync({
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
       });
       if (addresses.length > 0) {
-        placeName = formatAddress(addresses[0]);
+        const item = addresses[0];
+        city = item.city || item.district || item.subregion || 'Jodhpur';
+        state = item.region || 'Rajasthan';
+        country = item.country || 'India';
+        address = [city, state, country].filter(Boolean).join(', ');
+        placeName = formatAddress(item);
         if (placeName) {
           void preferencesStorage.set(preferenceKeys.locationName, placeName);
         }
@@ -45,7 +66,11 @@ export async function captureLocation(): Promise<LocationResult> {
       ok: true,
       latitude: position.coords.latitude,
       longitude: position.coords.longitude,
-      placeName,
+      placeName: placeName ?? address,
+      city,
+      state,
+      country,
+      address,
     };
   } catch {
     return { ok: false, message: 'Location is temporarily unavailable.' };

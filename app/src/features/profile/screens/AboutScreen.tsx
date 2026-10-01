@@ -31,7 +31,7 @@ export function AboutScreen({ navigation }: Props) {
   }
 
   return (
-    <OnboardingFrame step={2} title="About you" subtitle="A few sentences is enough. You can leave this blank." onBack={() => navigation.navigate('Photo')} onContinue={() => void continueNext()} loading={loading} disabled={bio.trim().length > limit} error={error}>
+    <OnboardingFrame step={4} title="About you" subtitle="A few sentences is enough. You can leave this blank." onBack={() => navigation.navigate('Photo')} onContinue={() => void continueNext()} loading={loading} disabled={bio.trim().length > limit} error={error}>
       <View className="gap-sm">
         <TextInput
           accessibilityLabel="Bio"

@@ -115,11 +115,26 @@ export function PhotoScreen({ navigation }: Props) {
   }
 
   return (
-    <OnboardingFrame step={1} title="Add your photos" subtitle="A few genuine photos help people get to know you." onBack={() => navigation.navigate('Basics')} onContinue={() => navigation.navigate('About')} loading={status !== null} disabled={photos.length === 0} error={error}>
-      <View className="flex-1 justify-between">
+    <OnboardingFrame
+      step={3}
+      title="Add your photos"
+      subtitle="A few genuine photos help people get to know you."
+      onBack={() => navigation.navigate('Location')}
+      onContinue={() => navigation.navigate('About')}
+      onSkip={() => navigation.navigate('About')}
+      skipLabel="Skip for now"
+      loading={status !== null}
+      disabled={photos.length === 0}
+      error={error}
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerClassName="flex-grow justify-between pb-sm"
+        className="flex-1"
+      >
         <View className="flex-1 items-center justify-center">
           <View
-            className="aspect-[4/5] w-full overflow-hidden rounded-sm bg-muted"
+            className="aspect-[4/5] w-full max-h-72 overflow-hidden rounded-sm bg-muted"
             onLayout={(event) => {
               setFrameWidth(event.nativeEvent.layout.width);
               setFrameHeight(event.nativeEvent.layout.height);
@@ -194,7 +209,7 @@ export function PhotoScreen({ navigation }: Props) {
             <AppText key={tip} variant="caption" tone="muted">• {tip}</AppText>
           ))}
         </View>
-      </View>
+      </ScrollView>
     </OnboardingFrame>
   );
 }
