@@ -110,12 +110,13 @@ describe('profile onboarding', () => {
 
   it('saves a selected interest and reports an upload failure', async () => {
     service.get.mockResolvedValue(profile({ step: 'interests', displayName: 'Anish' }));
-    service.interests.mockResolvedValue([{ id: '1', name: 'Music', slug: 'music' }]);
-    service.saveInterests.mockResolvedValue(profile({ step: 'preferences', interests: [{ id: '1', name: 'Music', slug: 'music' }] }));
-    const first = await renderGate();
+    const mockInterestId = '11111111-1111-4111-8111-111111111111';
+    service.interests.mockResolvedValue([{ id: mockInterestId, name: 'Music', slug: 'music' }]);
+    service.saveInterests.mockResolvedValue(profile({ step: 'preferences', interests: [{ id: mockInterestId, name: 'Music', slug: 'music' }] }));
+    await renderGate();
     await userEvent.press(await screen.findByRole('button', { name: 'Music' }));
     await userEvent.press(screen.getByRole('button', { name: 'Continue' }));
-    expect(service.saveInterests).toHaveBeenCalledWith(['1'], []);
+    expect(service.saveInterests).toHaveBeenCalledWith([mockInterestId], []);
 
     await first.unmount();
     resetSessionCache();
@@ -130,8 +131,9 @@ describe('profile onboarding', () => {
     service.get.mockResolvedValue(profile({ step: 'review', media: [{ id: 'media-1', isPrimary: true, contentType: 'image/jpeg' }], interests: [{ id: '1', name: 'Music', slug: 'music' }] }));
     service.complete.mockResolvedValue(profile({ complete: true, step: 'complete' }));
     await renderGate();
-    expect(await screen.findByText('Review')).toBeOnTheScreen();
-    expect(screen.getByText('Music')).toBeOnTheScreen();
+    expect(await screen.findByText("You're Almost In 🚀")).toBeOnTheScreen();
+    expect(screen.getByText('Respect the Vibe')).toBeOnTheScreen();
+    await userEvent.press(screen.getByRole('checkbox'));
     await userEvent.press(screen.getByRole('button', { name: 'Complete profile' }));
     expect(service.complete).toHaveBeenCalledTimes(1);
   });
@@ -140,7 +142,57 @@ describe('profile onboarding', () => {
     service.get.mockResolvedValue(profile({ step: 'review' }));
     service.complete.mockRejectedValue(new Error('down'));
     await renderGate();
-    await userEvent.press(await screen.findByRole('button', { name: 'Complete profile' }));
+    await userEvent.press(await screen.findByRole('checkbox'));
+    await userEvent.press(screen.getByRole('button', { name: 'Complete profile' }));
     expect(await screen.findByText('Could not save your profile.')).toBeOnTheScreen();
+  });
+
+  it('allows skipping photo upload and displays back button above continue', async () => {
+    service.get.mockResolvedValue(profile({ step: 'photo' }));
+    await renderGate();
+    expect(await screen.findByText('Add your photos')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Back' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Skip for now' })).toBeOnTheScreen();
+    await userEvent.press(screen.getByRole('button', { name: 'Skip for now' }));
+    expect(await screen.findByText('About you')).toBeOnTheScreen();
+  });
+
+  it('navigates back through location and gender to basics when pressing Back on photo screen', async () => {
+    service.get.mockResolvedValue(profile({ step: 'photo' }));
+    await renderGate();
+    expect(await screen.findByText('Add your photos')).toBeOnTheScreen();
+    await userEvent.press(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('Location Found!')).toBeOnTheScreen();
+    await userEvent.press(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText("What's your gender?")).toBeOnTheScreen();
+    await userEvent.press(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('What should people call you?')).toBeOnTheScreen();
+  });
+
+  it('allows selecting gender and continuing to location and photo', async () => {
+    service.get.mockResolvedValue(profile({ step: 'gender', displayName: 'Anish' }));
+    await renderGate();
+    expect(await screen.findByText("What's your gender?")).toBeOnTheScreen();
+    expect(screen.getByText('Hey Anish, pick one to continue.')).toBeOnTheScreen();
+    await userEvent.press(screen.getByRole('button', { name: 'I am Boy' }));
+    await userEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('Location Found!')).toBeOnTheScreen();
+    expect(screen.getByText('Address')).toBeOnTheScreen();
+    expect(screen.getByText('Jodhpur, Rajasthan, India')).toBeOnTheScreen();
+    await userEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('Add your photos')).toBeOnTheScreen();
+  });
+
+  it('displays location found with city, state, country and address', async () => {
+    service.get.mockResolvedValue(profile({ step: 'location' }));
+    await renderGate();
+    expect(await screen.findByText('Location Found!')).toBeOnTheScreen();
+    expect(screen.getByText('Address')).toBeOnTheScreen();
+    expect(screen.getByText('Jodhpur')).toBeOnTheScreen();
+    expect(screen.getByText('Rajasthan')).toBeOnTheScreen();
+    expect(screen.getByText('India')).toBeOnTheScreen();
+    await userEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('Add your photos')).toBeOnTheScreen();
   });
 });

@@ -4,7 +4,9 @@ import { useProfile } from '@/features/profile/hooks/useProfile';
 import type { OnboardingStackParamList } from '@/features/profile/navigation';
 import { AboutScreen } from '@/features/profile/screens/AboutScreen';
 import { BasicsScreen } from '@/features/profile/screens/BasicsScreen';
+import { GenderScreen } from '@/features/profile/screens/GenderScreen';
 import { InterestsScreen } from '@/features/profile/screens/InterestsScreen';
+import { LocationScreen } from '@/features/profile/screens/LocationScreen';
 import { PhotoScreen } from '@/features/profile/screens/PhotoScreen';
 import { PreferencesScreen } from '@/features/profile/screens/PreferencesScreen';
 import { ReviewScreen } from '@/features/profile/screens/ReviewScreen';
@@ -25,6 +27,8 @@ export function OnboardingNavigator() {
       screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette[resolvedScheme].background } }}
     >
       <Stack.Screen name="Basics" component={BasicsScreen} />
+      <Stack.Screen name="Gender" component={GenderScreen} />
+      <Stack.Screen name="Location" component={LocationScreen} />
       <Stack.Screen name="Photo" component={PhotoScreen} />
       <Stack.Screen name="About" component={AboutScreen} />
       <Stack.Screen name="Interests" component={InterestsScreen} />

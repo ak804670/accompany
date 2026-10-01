@@ -88,7 +88,7 @@ export function BasicsScreen({ navigation }: Props) {
       const saved = await profileService.saveBasics(trimmed, toIso(date));
       await preferencesStorage.remove('onboarding.displayName');
       setProfile(saved);
-      navigation.navigate('Photo');
+      navigation.navigate('Gender');
     } catch (caught) {
       setError(profileService.failureMessage(caught));
     } finally {
@@ -97,7 +97,15 @@ export function BasicsScreen({ navigation }: Props) {
   }
 
   return (
-    <OnboardingFrame step={0} title="What should people call you?" subtitle="Your name and date of birth stay on your profile." onContinue={() => void continueNext()} loading={loading} error={error}>
+    <OnboardingFrame
+      step={0}
+      title="What should people call you?"
+      subtitle="Your name and date of birth stay on your profile."
+      onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
+      onContinue={() => void continueNext()}
+      loading={loading}
+      error={error}
+    >
       <View className="gap-lg">
         <AppInput value={name} onChangeText={(value) => { setName(value); void preferencesStorage.set('onboarding.displayName', value); }} accessibilityLabel="Display name" autoCapitalize="words" maxLength={80} error={name !== '' ? nameError ?? undefined : undefined} />
         <Pressable accessibilityRole="button" accessibilityLabel="Date of birth" className="h-12 justify-center rounded-sm border border-input bg-background px-3" onPress={() => setShowPicker(true)}>
