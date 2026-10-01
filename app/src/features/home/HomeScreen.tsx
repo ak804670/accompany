@@ -5,9 +5,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBottomSheet } from '@/components/design-system/AppBottomSheet';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
+import { BrandLogo } from '@/components/design-system/BrandLogo';
 import { BrandIcon } from '@/components/icons/BrandIcon';
 import { Text } from '@/components/ui/text';
 import { DiscoveryDeck } from '@/components/home/DiscoveryDeck';
+import { PersonListView } from '@/components/home/PersonListView';
 import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { DISCOVERY_RADII_KM } from '@/features/home/discovery';
@@ -16,20 +18,33 @@ import { onDiscoveryRefresh } from '@/features/home/discovery-refresh';
 import { peopleService } from '@/features/home/people.service';
 import { useDiscoveryDeck } from '@/features/home/useDiscoveryDeck';
 import { useProfile } from '@/features/profile/hooks/useProfile';
+import { walletService } from '@/features/wallet/wallet.service';
+
 type HomeScreenProps = {
   onOpenPerson: (userId: string) => void;
+  onOpenWallet?: () => void;
 };
 
-export function HomeScreen({ onOpenPerson }: HomeScreenProps) {
+export function HomeScreen({ onOpenPerson, onOpenWallet }: HomeScreenProps) {
   const insets = useSafeAreaInsets();
   const { profile } = useProfile();
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [interestIds, setInterestIds] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'swipe' | 'list'>('list');
+  const [coins, setCoins] = useState<number | null>(null);
   const [locationNote, setLocationNote] = useState<string | null>(null);
   const { people, index, setIndex, hasMore, loading, error, retry, refresh } = useDiscoveryDeck(distanceKm, interestIds);
 
   useEffect(() => onDiscoveryRefresh(() => { void refresh(); }), [refresh]);
+
+  useEffect(() => {
+    let active = true;
+    void walletService.summary().then((summary) => {
+      if (active) setCoins(summary.availableCoins);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
 
   async function enableNearby(radius: number) {
     const location = await captureLocation();
@@ -44,21 +59,76 @@ export function HomeScreen({ onOpenPerson }: HomeScreenProps) {
     setFiltersOpen(false);
   }
 
+  const activeFiltersCount = (distanceKm !== null ? 1 : 0) + interestIds.length;
+
   return (
-    <View className="flex-1 bg-background px-lg" style={{ paddingTop: insets.top + 16 }}>
-      <View className="flex-row items-center justify-between">
-        <View className="flex-1">
-          <AppText variant="h2">Home</AppText>
-          <AppText variant="bodyM" tone="muted" className="mt-xs">People available now</AppText>
+    <View className="flex-1 bg-background px-lg" style={{ paddingTop: insets.top + 8 }}>
+      {/* Top Header Nav Bar with Company Logo & Coins Count */}
+      <View className="flex-row items-center justify-between pb-sm">
+        <BrandLogo size="sm" />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Wallet: ${coins !== null ? coins : 0} coins`}
+          onPress={onOpenWallet}
+          className="flex-row items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 active:opacity-75"
+        >
+          <BrandIcon name="coins" size={16} />
+          <AppText variant="label" className="font-semibold text-foreground">
+            {coins !== null ? coins.toLocaleString() : '0'}
+          </AppText>
+        </Pressable>
+      </View>
+
+      {/* Sub-bar below Nav Bar: View Switcher & Shifted Filter Button */}
+      <View className="flex-row items-center justify-between border-t border-border/40 py-2">
+        {/* View Switcher: Cards vs List */}
+        <View className="flex-row items-center rounded-full border border-border bg-muted/40 p-0.5">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cards view"
+            onPress={() => setViewMode('swipe')}
+            className={`rounded-full px-3 py-1 ${
+              viewMode === 'swipe' ? 'bg-primary' : 'bg-transparent'
+            }`}
+          >
+            <AppText
+              variant="caption"
+              className={`font-semibold ${
+                viewMode === 'swipe' ? 'text-primary-foreground' : 'text-muted-foreground'
+              }`}
+            >
+              Cards
+            </AppText>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="List view"
+            onPress={() => setViewMode('list')}
+            className={`rounded-full px-3 py-1 ${
+              viewMode === 'list' ? 'bg-primary' : 'bg-transparent'
+            }`}
+          >
+            <AppText
+              variant="caption"
+              className={`font-semibold ${
+                viewMode === 'list' ? 'text-primary-foreground' : 'text-muted-foreground'
+              }`}
+            >
+              List
+            </AppText>
+          </Pressable>
         </View>
-        <AppButton variant="outline" onPress={() => setFiltersOpen(true)}>
+
+        {/* Filter Button */}
+        <AppButton variant="outline" size="sm" onPress={() => setFiltersOpen(true)}>
           <View className="flex-row items-center gap-xs">
-            <BrandIcon name="filter" size={16} />
-            <Text>Filter</Text>
+            <BrandIcon name="filter" size={14} />
+            <Text>Filter{activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ''}</Text>
           </View>
         </AppButton>
       </View>
-      {locationNote ? <AppText className="mt-sm" variant="caption" tone="warning">{locationNote}</AppText> : null}
+
+      {locationNote ? <AppText className="mt-xs" variant="caption" tone="warning">{locationNote}</AppText> : null}
       {loading ? (
         <View className="mt-md gap-sm">
           <View className="h-72 rounded-md bg-muted" />
@@ -72,9 +142,13 @@ export function HomeScreen({ onOpenPerson }: HomeScreenProps) {
             <AppButton variant="outline" onPress={retry}>Try again</AppButton>
           </IllustratedState>
         </View>
-      ) : (
-        <View className="mt-md min-h-0 flex-1">
+      ) : viewMode === 'swipe' ? (
+        <View className="mt-xs min-h-0 flex-1">
           <DiscoveryDeck people={people} index={index} hasMore={hasMore} filtered={distanceKm !== null || interestIds.length > 0} onIndex={setIndex} onOpen={onOpenPerson} onAdjustFilters={() => setFiltersOpen(true)} />
+        </View>
+      ) : (
+        <View className="mt-xs min-h-0 flex-1">
+          <PersonListView people={people} filtered={distanceKm !== null || interestIds.length > 0} onOpen={onOpenPerson} onAdjustFilters={() => setFiltersOpen(true)} />
         </View>
       )}
       <AppBottomSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filter">

@@ -95,6 +95,7 @@ export function createShellRouter(auth: AuthService, pool: Pool, media?: MediaSt
       const radiusMeters = radius === null ? null : radius * 1000;
       const result = await pool.query(
         `SELECT p.user_id, pr.display_name, pr.date_of_birth, pr.bio, media.id AS media_id, p.last_seen_at,
+                (p.last_seen_at > NOW() - INTERVAL '45 seconds') AS online,
                 CASE
                   WHEN $4::float8 IS NULL OR pr.latitude IS NULL OR NOT pr.location_discovery THEN NULL
                   ELSE earth_distance(ll_to_earth($4::float8, $5::float8), ll_to_earth(pr.latitude, pr.longitude))

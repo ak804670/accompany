@@ -95,7 +95,10 @@ function TabsScreen({ navigation }: NativeStackScreenProps<ShellParamList, 'Tabs
     <View className="flex-1 bg-background">
       <Animated.View className="flex-1" style={{ opacity }}>
         <View className="flex-1" style={{ display: tab === 'home' ? 'flex' : 'none' }}>
-          <HomeScreen onOpenPerson={(userId) => navigation.navigate('Person', { userId })} />
+          <HomeScreen
+            onOpenPerson={(userId) => navigation.navigate('Person', { userId })}
+            onOpenWallet={() => navigation.navigate('Wallet')}
+          />
         </View>
         <View className="absolute inset-0" style={{ display: tab === 'chats' ? 'flex' : 'none' }}>
           <ChatsScreen onOpen={openConversation} />

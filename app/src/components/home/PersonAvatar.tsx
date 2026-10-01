@@ -47,7 +47,7 @@ export function PersonAvatar({ userId, name, size = 64, wide = false, fill = fal
       ) : demo ? (
         <Image accessibilityIgnoresInvertColors accessibilityLabel="" source={demo} style={frame} />
       ) : (
-        <AppText variant="h3">{name.slice(0, 1).toUpperCase()}</AppText>
+        <AppText variant="h3">{(name || '').trim().slice(0, 1).toUpperCase() || '?'}</AppText>
       )}
     </View>
   );

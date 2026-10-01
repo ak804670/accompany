@@ -41,8 +41,11 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
   }, []));
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-lg px-lg pb-xl" style={{ paddingTop: insets.top + 16 }}>
-      <AppText variant="h2">Profile</AppText>
+    <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-lg px-lg pb-xl" style={{ paddingTop: insets.top + 8 }}>
+      {/* Top Header Nav Bar */}
+      <View className="flex-row items-center justify-between pb-sm">
+        <AppText variant="h2">Profile</AppText>
+      </View>
       <View className="items-center gap-sm">
         <PersonAvatar userId={user?.id} name={name} size={96} />
         <AppText variant="h3">{name}</AppText>

@@ -71,8 +71,11 @@ export function ChatsScreen({ onOpen }: ChatsScreenProps) {
   });
 
   return (
-    <View className="flex-1 bg-background px-lg" style={{ paddingTop: insets.top + 16 }}>
-      <AppText variant="h2">Chats</AppText>
+    <View className="flex-1 bg-background px-lg" style={{ paddingTop: insets.top + 8 }}>
+      {/* Top Header Nav Bar */}
+      <View className="flex-row items-center justify-between pb-sm">
+        <AppText variant="h2">Chats</AppText>
+      </View>
       <View className="mt-md h-12 flex-row items-center gap-sm rounded-sm border border-input bg-background px-3">
         <BrandIcon name="search" size={18} />
         <TextInput

@@ -93,7 +93,7 @@ export function toPublicPerson(row: Record<string, unknown>, extras: {
     age: extras.age,
     bio: typeof row.bio === 'string' ? row.bio : null,
     mediaId: row.media_id ? String(row.media_id) : null,
-    online: Boolean(row.online),
+    online: row.online === undefined ? true : Boolean(row.online),
     interests: extras.interests,
     sharedInterests: extras.sharedInterests,
     rates: extras.rates,

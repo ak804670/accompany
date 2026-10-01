@@ -54,7 +54,14 @@ export const peopleService = {
     if (query.distanceKm) params.set('distance', String(query.distanceKm));
     if (query.interestIds?.length) params.set('interests', query.interestIds.join(','));
     const suffix = params.size ? `?${params.toString()}` : '';
-    return apiClient.get<PeopleResponse>(`/v1/people/online${suffix}`);
+    const result = await apiClient.get<PeopleResponse>(`/v1/people/online${suffix}`);
+    return {
+      ...result,
+      people: result.people.map((person) => ({
+        ...person,
+        online: true,
+      })),
+    };
   },
 
   async saveLocation(latitude: number, longitude: number, discoveryEnabled = true): Promise<void> {
