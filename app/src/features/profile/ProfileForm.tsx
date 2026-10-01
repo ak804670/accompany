@@ -223,8 +223,8 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
       </View>
       <View className="gap-sm">
         <AppText variant="label">Communication rates</AppText>
-        <RateField label="Audio call ₹ / min" value={rates.audio} onChange={(audio) => setRates((current) => ({ ...current, audio }))} />
-        <RateField label="Video call ₹ / min" value={rates.video} onChange={(video) => setRates((current) => ({ ...current, video }))} />
+        <RateField label="Audio call (coins / min)" value={rates.audio} onChange={(audio) => setRates((current) => ({ ...current, audio }))} />
+        <RateField label="Video call (coins / min)" value={rates.video} onChange={(video) => setRates((current) => ({ ...current, video }))} />
       </View>
       {error ? <AppText variant="bodyS" tone="error">{error}</AppText> : null}
       <AppButton loading={saving} onPress={() => void save()}>Save changes</AppButton>

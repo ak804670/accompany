@@ -45,7 +45,7 @@ export function nextDeckIndex(index: number, length: number, hasMore: boolean): 
 
 export function formatRate(amount: number | null, unit: 'message' | 'min'): string {
   if (amount === null) return '—';
-  return `₹${amount}/${unit}`;
+  return `${amount} ${amount === 1 ? 'coin' : 'coins'}/${unit}`;
 }
 
 export function formatDistance(distanceKm: number | null): string | null {

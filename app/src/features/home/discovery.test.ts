@@ -1,4 +1,4 @@
-import { mergeProfiles, nextDeckIndex, patchProfiles, shouldPrefetch, shouldCompleteSwipe, SWIPE_THRESHOLD, PREFETCH_THRESHOLD } from '@/features/home/discovery';
+import { formatRate, mergeProfiles, nextDeckIndex, patchProfiles, shouldPrefetch, shouldCompleteSwipe, SWIPE_THRESHOLD, PREFETCH_THRESHOLD } from '@/features/home/discovery';
 
 describe('discovery swipe', () => {
   it('returns the card when the drag is below the threshold', () => {
@@ -47,5 +47,14 @@ describe('discovery swipe', () => {
     expect(mergeProfiles([{ userId: 'a' }], [])).toEqual([{ userId: 'a' }]);
     expect(nextDeckIndex(0, 0, false)).toBe(0);
     expect(nextDeckIndex(1, 3, false)).toBe(2);
+  });
+
+  describe('formatRate', () => {
+    it('formats rates in coins per unit', () => {
+      expect(formatRate(null, 'min')).toBe('—');
+      expect(formatRate(1, 'min')).toBe('1 coin/min');
+      expect(formatRate(10, 'min')).toBe('10 coins/min');
+      expect(formatRate(5, 'message')).toBe('5 coins/message');
+    });
   });
 });
