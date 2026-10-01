@@ -8,4 +8,5 @@ export const preferenceKeys = {
   theme: 'theme.preference',
   deviceInformation: 'device.information',
   userPreferences: 'user.preferences',
+  locationName: 'user.locationName',
 } as const;

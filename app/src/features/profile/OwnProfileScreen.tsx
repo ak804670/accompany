@@ -12,6 +12,7 @@ import { ProfileSection } from '@/components/profile/ProfileSection';
 import { useAuth, useSession } from '@/features/auth';
 import { useTheme, type ThemePreference } from '@/theme';
 import { formatRate } from '@/features/home/discovery';
+import { getOrDetectLocationName } from '@/features/home/location';
 import { profileService } from '@/features/profile/services/profile.service';
 import { useProfile } from '@/features/profile/hooks/useProfile';
 
@@ -28,12 +29,16 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
   const { logout } = useAuth();
   const { preference, setPreference } = useTheme();
   const [rates, setRates] = useState<{ chat: number | null; audio: number | null; video: number | null } | null>(null);
+  const [locationName, setLocationName] = useState<string | null>(null);
   const name = profile?.displayName?.trim() || 'Your profile';
 
   useFocusEffect(useCallback(() => {
     let active = true;
     void profileService.rates?.()?.then((value) => {
       if (active) setRates(value);
+    }).catch(() => undefined);
+    void getOrDetectLocationName().then((loc) => {
+      if (active && loc) setLocationName(loc);
     }).catch(() => undefined);
     return () => {
       active = false;
@@ -53,6 +58,12 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
       <View className="items-center gap-sm">
         <PersonAvatar userId={user?.id} name={name} size={96} />
         <AppText variant="h3">{name}</AppText>
+        {locationName ? (
+          <View className="flex-row items-center gap-xs">
+            <BrandIcon name="location" size={14} />
+            <AppText variant="caption" tone="muted">{locationName}</AppText>
+          </View>
+        ) : null}
         {profile?.bio ? <AppText variant="bodyM" tone="muted" className="text-center">{profile.bio}</AppText> : null}
         <AppButton variant="outline" onPress={onEdit}>
           <View className="flex-row items-center gap-xs">
@@ -79,6 +90,17 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
         <Info label="Video" value={formatRate(rates?.video ?? null, 'min')} />
       </ProfileSection>
       <ProfileSection title="Location">
+        <View className="flex-row items-center gap-sm">
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-muted">
+            <BrandIcon name="location" size={20} />
+          </View>
+          <View className="flex-1">
+            <AppText variant="label">{locationName || 'Location not set'}</AppText>
+            <AppText variant="bodyS" tone="muted">
+              {locationName ? 'Active for nearby discovery' : 'Set location in Edit Profile to discover people nearby'}
+            </AppText>
+          </View>
+        </View>
         <AppText variant="bodyS" tone="muted">Nearby discovery uses your location. Other people only see an approximate distance.</AppText>
       </ProfileSection>
       <ProfileSection title="Coins">

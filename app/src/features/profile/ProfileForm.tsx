@@ -6,8 +6,9 @@ import { AppBottomSheet } from '@/components/design-system/AppBottomSheet';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppInput } from '@/components/design-system/AppInput';
 import { AppText } from '@/components/design-system/AppText';
+import { BrandIcon } from '@/components/icons/BrandIcon';
 import { InterestTagInput } from '@/components/profile/InterestTagInput';
-import { captureLocation } from '@/features/home/location';
+import { captureLocation, getOrDetectLocationName } from '@/features/home/location';
 import { refreshDiscovery } from '@/features/home/discovery-refresh';
 import { useProfile } from '@/features/profile/hooks/useProfile';
 import { profileService } from '@/features/profile/services/profile.service';
@@ -38,10 +39,17 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
   const [rates, setRates] = useState<Rates>({ chat: '', audio: '', video: '' });
   const [savedRates, setSavedRates] = useState<Rates>({ chat: '', audio: '', video: '' });
   const [previews, setPreviews] = useState<Record<string, string>>({});
+  const [locationName, setLocationName] = useState<string | null>(null);
   const [locationNote, setLocationNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [photoId, setPhotoId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void getOrDetectLocationName().then((loc) => {
+      if (loc) setLocationName(loc);
+    }).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     void profileService.rates().then((value) => {
@@ -168,6 +176,9 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
       setLocationNote(location.message);
       return;
     }
+    if (location.placeName) {
+      setLocationName(location.placeName);
+    }
     await peopleServiceLocation(location.latitude, location.longitude);
     setLocationNote('Location updated');
     refreshDiscovery();
@@ -218,7 +229,23 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
       <View className="gap-sm">
         <AppText variant="label">Location</AppText>
         <AppText variant="bodyS" tone="muted">Current location is used for nearby discovery. Other people only see an approximate distance.</AppText>
-        <AppButton variant="outline" onPress={() => void updateLocation()}>Update location</AppButton>
+        {locationName ? (
+          <View className="flex-row items-center gap-sm rounded-sm border border-border bg-card p-md">
+            <View className="h-9 w-9 items-center justify-center rounded-full bg-muted">
+              <BrandIcon name="location" size={18} />
+            </View>
+            <View className="flex-1">
+              <AppText variant="label">{locationName}</AppText>
+              <AppText variant="caption" tone="muted">Detected location</AppText>
+            </View>
+          </View>
+        ) : null}
+        <AppButton variant="outline" onPress={() => void updateLocation()}>
+          <View className="flex-row items-center gap-xs">
+            <BrandIcon name="location" size={16} />
+            <AppText>{locationName ? 'Update location' : 'Enable location'}</AppText>
+          </View>
+        </AppButton>
         {locationNote ? <AppText variant="caption" tone="muted">{locationNote}</AppText> : null}
       </View>
       <View className="gap-sm">

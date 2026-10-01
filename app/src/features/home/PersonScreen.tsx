@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
+import { BrandIcon } from '@/components/icons/BrandIcon';
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
 import { OnlineStatus } from '@/components/home/OnlineStatus';
@@ -91,7 +92,12 @@ export function PersonScreen({ userId, onBack, onConversation }: PersonScreenPro
             <PersonAvatar userId={person.userId} name={person.name} size={120} />
             <AppText variant="h1">{person.name}</AppText>
             <OnlineStatus online={person.online} />
-            {distance ? <AppText variant="bodyS" tone="muted">{distance}</AppText> : null}
+            {distance ? (
+              <View className="flex-row items-center gap-1">
+                <BrandIcon name="location" size={16} />
+                <AppText variant="bodyS" tone="muted">{distance}</AppText>
+              </View>
+            ) : null}
             {person.bio ? <AppText variant="bodyL">{person.bio}</AppText> : null}
             <View className="flex-row flex-wrap gap-xs">
               {person.interests.map((interest) => (
