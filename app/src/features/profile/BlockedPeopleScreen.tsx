@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/design-system/AppButton';
@@ -42,29 +42,37 @@ export function BlockedPeopleScreen({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <View className="flex-1 bg-background px-lg" style={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }}>
-      <View className="flex-row items-center gap-sm">
-        <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
-        <AppText variant="h3">Blocked people</AppText>
+    <View className="flex-1 bg-background" style={{ paddingBottom: insets.bottom + 16 }}>
+      {/* Top Header Nav Bar */}
+      <View
+        className="border-b border-nav-border bg-nav px-sm pb-2"
+        style={{ paddingTop: insets.top + 8 }}
+      >
+        <View className="flex-row items-center gap-xs">
+          <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
+          <AppText variant="h3">Blocked people</AppText>
+        </View>
       </View>
-      {loading ? <IllustratedState name="loading" motion="pulse" size={140} title="Loading blocked people..." /> : null}
-      {error ? (
-        <IllustratedState name={illustrationForError(error)} title={error} body="Try again in a moment.">
-          <AppButton variant="outline" onPress={load}>Try again</AppButton>
-        </IllustratedState>
-      ) : null}
-      {!loading && !error && people.length === 0 ? (
-        <IllustratedState name="blocked-empty" title="You haven't blocked anyone." body="Blocking stays private. People you block cannot contact you." />
-      ) : null}
-      <View className="mt-lg gap-md">
-        {people.map((person) => (
-          <View key={person.userId} className="flex-row items-center gap-md rounded-sm border border-border p-md">
-            <PersonAvatar userId={person.userId} name={person.name} size={48} />
-            <AppText variant="label" className="flex-1">{person.name}</AppText>
-            <AppButton variant="outline" onPress={() => setSelected(person)}>Unblock</AppButton>
-          </View>
-        ))}
-      </View>
+      <ScrollView className="flex-1 px-lg" contentContainerClassName="pt-md pb-lg">
+        {loading ? <IllustratedState name="loading" motion="pulse" size={140} title="Loading blocked people..." /> : null}
+        {error ? (
+          <IllustratedState name={illustrationForError(error)} title={error} body="Try again in a moment.">
+            <AppButton variant="outline" onPress={load}>Try again</AppButton>
+          </IllustratedState>
+        ) : null}
+        {!loading && !error && people.length === 0 ? (
+          <IllustratedState name="blocked-empty" title="You haven't blocked anyone." body="Blocking stays private. People you block cannot contact you." />
+        ) : null}
+        <View className="mt-md gap-md">
+          {people.map((person) => (
+            <View key={person.userId} className="flex-row items-center gap-md rounded-sm border border-border p-md">
+              <PersonAvatar userId={person.userId} name={person.name} size={48} />
+              <AppText variant="label" className="flex-1">{person.name}</AppText>
+              <AppButton variant="outline" onPress={() => setSelected(person)}>Unblock</AppButton>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
       <AppDialog open={selected !== null} onOpenChange={(open) => { if (!open) setSelected(null); }} title={selected ? `Unblock ${selected.name}?` : 'Unblock'} description="They will be able to contact you again if other communication rules allow it.">
         <View className="flex-row gap-sm">
           <AppButton variant="outline" className="flex-1" onPress={() => setSelected(null)}>Cancel</AppButton>

@@ -71,11 +71,15 @@ export function ChatsScreen({ onOpen }: ChatsScreenProps) {
   });
 
   return (
-    <View className="flex-1 bg-background px-lg" style={{ paddingTop: insets.top + 8 }}>
+    <View className="flex-1 bg-background">
       {/* Top Header Nav Bar */}
-      <View className="flex-row items-center justify-between pb-sm">
+      <View
+        className="border-b border-nav-border bg-nav px-lg pb-3"
+        style={{ paddingTop: insets.top + 8 }}
+      >
         <AppText variant="h2">Chats</AppText>
       </View>
+      <View className="flex-1 px-lg">
       <View className="mt-md h-12 flex-row items-center gap-sm rounded-sm border border-input bg-background px-3">
         <BrandIcon name="search" size={18} />
         <TextInput
@@ -125,6 +129,7 @@ export function ChatsScreen({ onOpen }: ChatsScreenProps) {
           <CallsTab width={pageWidth} query={query} onOpen={onOpen} />
         </Animated.ScrollView>
       )}
+      </View>
       </View>
     </View>
   );

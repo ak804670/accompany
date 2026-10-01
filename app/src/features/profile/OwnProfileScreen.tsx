@@ -32,7 +32,7 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
 
   useFocusEffect(useCallback(() => {
     let active = true;
-    void profileService.rates().then((value) => {
+    void profileService.rates?.()?.then((value) => {
       if (active) setRates(value);
     }).catch(() => undefined);
     return () => {
@@ -41,11 +41,15 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
   }, []));
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-lg px-lg pb-xl" style={{ paddingTop: insets.top + 8 }}>
+    <View className="flex-1 bg-background">
       {/* Top Header Nav Bar */}
-      <View className="flex-row items-center justify-between pb-sm">
+      <View
+        className="border-b border-nav-border bg-nav px-lg pb-3"
+        style={{ paddingTop: insets.top + 8 }}
+      >
         <AppText variant="h2">Profile</AppText>
       </View>
+      <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-lg px-lg py-md pb-xl">
       <View className="items-center gap-sm">
         <PersonAvatar userId={user?.id} name={name} size={96} />
         <AppText variant="h3">{name}</AppText>
@@ -112,6 +116,7 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
         <AppButton variant="outline" onPress={() => void logout()}>Log out</AppButton>
       </ProfileSection>
     </ScrollView>
+    </View>
   );
 }
 

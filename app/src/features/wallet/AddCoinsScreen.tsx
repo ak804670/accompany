@@ -33,12 +33,18 @@ export function AddCoinsScreen({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top + 8 }}>
-    <View className="flex-row items-center gap-sm px-sm">
-      <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
-      <AppText variant="h3">Add coins</AppText>
-    </View>
-    <ScrollView className="flex-1" contentContainerClassName="gap-md px-lg pb-xl">
+    <View className="flex-1 bg-background">
+      {/* Top Header Nav Bar */}
+      <View
+        className="border-b border-nav-border bg-nav px-sm pb-2"
+        style={{ paddingTop: insets.top + 8 }}
+      >
+        <View className="flex-row items-center gap-xs">
+          <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
+          <AppText variant="h3">Add coins</AppText>
+        </View>
+      </View>
+      <ScrollView className="flex-1" contentContainerClassName="gap-md px-lg py-md pb-xl">
       <AppText variant="bodyS" tone="muted">Coins are added only after payment is confirmed.</AppText>
       {notice ? (
         <View className="items-center gap-sm">

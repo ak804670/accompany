@@ -59,6 +59,10 @@ module.exports = {
         warning: 'hsl(var(--warning))',
         coin: 'hsl(var(--coin))',
         online: 'hsl(var(--online))',
+        nav: {
+          DEFAULT: 'hsl(var(--nav))',
+          border: 'hsl(var(--nav-border))',
+        },
       },
       spacing: {
         xs: '4px',

@@ -11,6 +11,14 @@ import { AppButton } from '@/components/design-system/AppButton';
 import { AppDialog } from '@/components/design-system/AppDialog';
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { BrandIcon } from '@/components/icons/BrandIcon';
 import { AccompanyIllustration } from '@/components/illustrations/AccompanyIllustration';
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
@@ -53,7 +61,6 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
   const [canRespond, setCanRespond] = useState(false);
   const [status, setStatus] = useState<ConversationStatus | null>(null);
   const [blocked, setBlocked] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [confirm, setConfirm] = useState<'block' | 'unblock' | null>(null);
   const [freshId, setFreshId] = useState<string | null>(null);
   const openedConversation = useRef(conversationId);
@@ -205,7 +212,6 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
     setBlocked(true);
     setCanMessage(false);
     setCanRespond(false);
-    setMenuOpen(false);
     setConfirm(null);
     refreshDiscovery();
   }
@@ -280,21 +286,53 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
   }, [highlightCallId, rows]);
 
   return (
-    <KeyboardAvoidingView className="flex-1 bg-background" behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom + 8 }}>
+    <KeyboardAvoidingView className="flex-1 bg-background" behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, paddingBottom: insets.bottom + 8 }}>
       <ChatHeader
         name={header.name}
         personId={header.personId}
         online={header.online}
         onBack={onBack}
         actions={
-          <View className="flex-row">
+          <View className="flex-row items-center">
             {panels.footer === 'composer' ? (
               <>
                 <AppIconButton icon="call" accessibilityLabel="Voice call" onPress={() => setPendingKind('audio')} />
                 <AppIconButton icon="video-call" accessibilityLabel="Video call" onPress={() => setPendingKind('video')} />
               </>
             ) : null}
-            <AppIconButton icon="more" accessibilityLabel="Conversation menu" onPress={() => setMenuOpen(true)} />
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                accessibilityRole="button"
+                accessibilityLabel="Conversation menu"
+                className="h-10 w-10 items-center justify-center rounded-md active:opacity-70"
+              >
+                <BrandIcon name="more" size={22} />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="bottom" sideOffset={6} className="w-48">
+                <DropdownMenuItem
+                  onPress={() => {
+                    if (header.personId) onViewProfile?.(header.personId);
+                  }}
+                  className="flex-row items-center gap-2.5 py-2.5"
+                >
+                  <BrandIcon name="profile" size={18} />
+                  <AppText variant="bodyM">View profile</AppText>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant={blocked ? 'default' : 'destructive'}
+                  onPress={() => {
+                    setConfirm(blocked ? 'unblock' : 'block');
+                  }}
+                  className="flex-row items-center gap-2.5 py-2.5"
+                >
+                  <BrandIcon name="block" size={18} />
+                  <AppText variant="bodyM" tone={blocked ? undefined : 'error'}>
+                    {blocked ? 'Unblock user' : 'Block user'}
+                  </AppText>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </View>
         }
       />
@@ -398,12 +436,6 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
           if (kind) void startCall(kind);
         }}
       />
-      <AppDialog open={menuOpen} onOpenChange={setMenuOpen} title={header.name}>
-        <View className="gap-sm">
-          <AppButton variant="outline" onPress={() => { setMenuOpen(false); if (header.personId) onViewProfile?.(header.personId); }}>View profile</AppButton>
-          <AppButton variant="outline" onPress={() => { setMenuOpen(false); setConfirm(blocked ? 'unblock' : 'block'); }}>{blocked ? 'Unblock user' : 'Block user'}</AppButton>
-        </View>
-      </AppDialog>
       <AppDialog open={confirm !== null} onOpenChange={(open) => { if (!open) setConfirm(null); }} title={confirm === 'unblock' ? `Unblock ${header.name}?` : `Block ${header.name}?`} description={confirm === 'unblock' ? 'Communication rules apply again after unblocking.' : 'Blocking this person will stop communication between you.'}>
         <View className="flex-row gap-sm">
           <AppButton variant="outline" className="flex-1" onPress={() => setConfirm(null)}>Cancel</AppButton>

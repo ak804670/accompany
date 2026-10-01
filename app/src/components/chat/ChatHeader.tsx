@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
@@ -15,8 +16,13 @@ type ChatHeaderProps = {
 };
 
 export function ChatHeader({ name, personId, online, onBack, actions }: ChatHeaderProps) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View className="flex-row items-center gap-sm border-b border-border px-md py-sm">
+    <View
+      className="flex-row items-center gap-sm border-b border-nav-border bg-nav px-sm pb-2"
+      style={{ paddingTop: insets.top + 8 }}
+    >
       <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
       <PersonAvatar userId={personId} name={name} size={40} />
       <View className="flex-1">

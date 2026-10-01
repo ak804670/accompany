@@ -27,7 +27,7 @@ export const palette = {
     primaryDark: '#A62965',
     primaryLight: '#F06091',
     primaryLighter: '#F7A9C1',
-    primaryLightest: '#FDE4ED',
+    primaryLightest: '#24141E',
     primaryForeground: '#FBF7F2',
     success: '#29995C',
     warning: '#EB9E1F',

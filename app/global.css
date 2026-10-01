@@ -31,6 +31,8 @@
     --warning: 37.4 83.6% 52.2%;
     --coin: 37.7 88.4% 55.9%;
     --online: 145.5 57.3% 45.9%;
+    --nav: 338.4 86.2% 94.3%;
+    --nav-border: 339 30% 86%;
     --radius: 8px;
   }
 
@@ -47,7 +49,9 @@
     --primary-dark: 331.2 60.4% 40.6%;
     --primary-light: 339.6 82.8% 65.9%;
     --primary-lighter: 341.5 83% 81.6%;
-    --primary-lightest: 338.4 86.2% 94.3%;
+    --primary-lightest: 332.1 42% 13%;
+    --nav: 332.1 42% 13%;
+    --nav-border: 332.1 25% 20%;
     --secondary: 34.3 9.1% 15.1%;
     --secondary-foreground: 36.9 35.1% 92.7%;
     --muted: 34.3 9.1% 15.1%;

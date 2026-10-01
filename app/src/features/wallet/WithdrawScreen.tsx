@@ -33,12 +33,18 @@ export function WithdrawScreen({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top + 8 }}>
-    <View className="flex-row items-center gap-sm px-sm">
-      <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
-      <AppText variant="h3">Withdraw</AppText>
-    </View>
-    <ScrollView className="flex-1" contentContainerClassName="gap-md px-lg pb-xl">
+    <View className="flex-1 bg-background">
+      {/* Top Header Nav Bar */}
+      <View
+        className="border-b border-nav-border bg-nav px-sm pb-2"
+        style={{ paddingTop: insets.top + 8 }}
+      >
+        <View className="flex-row items-center gap-xs">
+          <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
+          <AppText variant="h3">Withdraw</AppText>
+        </View>
+      </View>
+      <ScrollView className="flex-1" contentContainerClassName="gap-md px-lg py-md pb-xl">
       <AppText variant="bodyS" tone="muted">Only coins you earned from paid calls can be withdrawn. Purchased coins stay available to spend.</AppText>
       <TextInput accessibilityLabel="Coins to withdraw" value={coins} onChangeText={setCoins} keyboardType="number-pad" placeholder="Coins" placeholderTextColor="#8A8178" className="min-h-12 rounded-sm border border-input bg-background px-md text-foreground" />
       <TextInput accessibilityLabel="UPI id" value={destination} onChangeText={setDestination} autoCapitalize="none" placeholder="UPI ID" placeholderTextColor="#8A8178" className="min-h-12 rounded-sm border border-input bg-background px-md text-foreground" />

@@ -35,12 +35,18 @@ export function WalletScreen({ onBack, onAdd, onWithdraw }: WalletScreenProps) {
   }, []));
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top + 8 }}>
-    <View className="flex-row items-center gap-sm px-sm">
-      <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
-      <AppText variant="h3">Wallet</AppText>
-    </View>
-    <ScrollView className="flex-1" contentContainerClassName="gap-lg px-lg pb-xl">
+    <View className="flex-1 bg-background">
+      {/* Top Header Nav Bar */}
+      <View
+        className="border-b border-nav-border bg-nav px-sm pb-2"
+        style={{ paddingTop: insets.top + 8 }}
+      >
+        <View className="flex-row items-center gap-xs">
+          <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
+          <AppText variant="h3">Wallet</AppText>
+        </View>
+      </View>
+      <ScrollView className="flex-1" contentContainerClassName="gap-lg px-lg py-md pb-xl">
       <View className="items-center gap-xs rounded-md border border-border bg-card p-lg">
         <View className="flex-row items-center gap-xs">
           <BrandIcon name="coins" size={18} />

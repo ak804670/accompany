@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/design-system/AppButton';
@@ -74,72 +74,83 @@ export function PersonScreen({ userId, onBack, onConversation }: PersonScreenPro
   const hidden = person?.relationship === 'blocked' || person?.relationship === 'unavailable';
 
   return (
-    <View className="flex-1 bg-background px-lg" style={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }}>
-      <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
-      {person ? (
-        <View className="mt-lg flex-1 gap-md">
-          <PersonAvatar userId={person.userId} name={person.name} size={120} />
-          <AppText variant="h1">{person.name}</AppText>
-          <OnlineStatus online={person.online} />
-          {distance ? <AppText variant="bodyS" tone="muted">{distance}</AppText> : null}
-          {person.bio ? <AppText variant="bodyL">{person.bio}</AppText> : null}
-          <View className="flex-row flex-wrap gap-xs">
-            {person.interests.map((interest) => (
-              <View key={interest} className="rounded-full bg-muted px-sm py-xs">
-                <AppText variant="caption">{interest}</AppText>
+    <View className="flex-1 bg-background" style={{ paddingBottom: insets.bottom + 16 }}>
+      {/* Top Header Nav Bar */}
+      <View
+        className="border-b border-nav-border bg-nav px-sm pb-2"
+        style={{ paddingTop: insets.top + 8 }}
+      >
+        <View className="flex-row items-center gap-xs">
+          <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
+          {person ? <AppText variant="h3">{person.name}</AppText> : null}
+        </View>
+      </View>
+      <ScrollView className="flex-1 px-lg" contentContainerClassName="py-md pb-lg">
+        {person ? (
+          <View className="flex-1 gap-md">
+            <PersonAvatar userId={person.userId} name={person.name} size={120} />
+            <AppText variant="h1">{person.name}</AppText>
+            <OnlineStatus online={person.online} />
+            {distance ? <AppText variant="bodyS" tone="muted">{distance}</AppText> : null}
+            {person.bio ? <AppText variant="bodyL">{person.bio}</AppText> : null}
+            <View className="flex-row flex-wrap gap-xs">
+              {person.interests.map((interest) => (
+                <View key={interest} className="rounded-full bg-muted px-sm py-xs">
+                  <AppText variant="caption">{interest}</AppText>
+                </View>
+              ))}
+            </View>
+            <View className="flex-row gap-md">
+              <View className="flex-1">
+                <AppText variant="caption" tone="muted">Audio call</AppText>
+                <AppText variant="label">{formatRate(person.rates.audio, 'min')}</AppText>
               </View>
-            ))}
+              <View className="flex-1">
+                <AppText variant="caption" tone="muted">Video call</AppText>
+                <AppText variant="label">{formatRate(person.rates.video, 'min')}</AppText>
+              </View>
+            </View>
+            {error ? <AppText variant="bodyS" tone="error">{error}</AppText> : null}
+            {hidden ? null : person.relationship === 'pending_outgoing' ? (
+              <AppText variant="bodyM">Request pending</AppText>
+            ) : person.relationship === 'accepted' && person.conversationId ? (
+              <AppButton onPress={() => onConversation(person.conversationId!, person.name, person.online)}>Message</AppButton>
+            ) : composing || person.relationship === 'none' || person.relationship === 'rejected' ? (
+              <View className="gap-sm">
+                {composing ? (
+                  <>
+                    <TextInput
+                      accessibilityLabel="First message"
+                      value={message}
+                      onChangeText={setMessage}
+                      placeholder="Write one message"
+                      className="min-h-20 rounded-sm border border-input px-md py-sm text-foreground"
+                      multiline
+                    />
+                    <AppButton loading={pending} onPress={() => void sendRequest()}>Send request</AppButton>
+                  </>
+                ) : (
+                  <AppButton onPress={() => setComposing(true)}>Message</AppButton>
+                )}
+              </View>
+            ) : null}
+            {person.relationship === 'blocked' ? (
+              <AppButton variant="outline" loading={pending} onPress={() => void peopleService.unblock(person.userId).then(() => setPerson({ ...person, relationship: 'none' }))}>Unblock</AppButton>
+            ) : hidden ? null : (
+              <AppButton variant="ghost" onPress={() => void block()}>Block</AppButton>
+            )}
           </View>
-          <View className="flex-row gap-md">
-            <View className="flex-1">
-              <AppText variant="caption" tone="muted">Audio call</AppText>
-              <AppText variant="label">{formatRate(person.rates.audio, 'min')}</AppText>
-            </View>
-            <View className="flex-1">
-              <AppText variant="caption" tone="muted">Video call</AppText>
-              <AppText variant="label">{formatRate(person.rates.video, 'min')}</AppText>
-            </View>
+        ) : (
+          <View className="mt-xl">
+            <IllustratedState
+              name={error ? illustrationForError(error) : 'loading'}
+              motion={error ? 'none' : 'pulse'}
+              size={140}
+              title={error ?? 'Loading...'}
+            />
           </View>
-          {error ? <AppText variant="bodyS" tone="error">{error}</AppText> : null}
-          {hidden ? null : person.relationship === 'pending_outgoing' ? (
-            <AppText variant="bodyM">Request pending</AppText>
-          ) : person.relationship === 'accepted' && person.conversationId ? (
-            <AppButton onPress={() => onConversation(person.conversationId!, person.name, person.online)}>Message</AppButton>
-          ) : composing || person.relationship === 'none' || person.relationship === 'rejected' ? (
-            <View className="gap-sm">
-              {composing ? (
-                <>
-                  <TextInput
-                    accessibilityLabel="First message"
-                    value={message}
-                    onChangeText={setMessage}
-                    placeholder="Write one message"
-                    className="min-h-20 rounded-sm border border-input px-md py-sm text-foreground"
-                    multiline
-                  />
-                  <AppButton loading={pending} onPress={() => void sendRequest()}>Send request</AppButton>
-                </>
-              ) : (
-                <AppButton onPress={() => setComposing(true)}>Message</AppButton>
-              )}
-            </View>
-          ) : null}
-          {person.relationship === 'blocked' ? (
-            <AppButton variant="outline" loading={pending} onPress={() => void peopleService.unblock(person.userId).then(() => setPerson({ ...person, relationship: 'none' }))}>Unblock</AppButton>
-          ) : hidden ? null : (
-            <AppButton variant="ghost" onPress={() => void block()}>Block</AppButton>
-          )}
-        </View>
-      ) : (
-        <View className="mt-xl">
-          <IllustratedState
-            name={error ? illustrationForError(error) : 'loading'}
-            motion={error ? 'none' : 'pulse'}
-            size={140}
-            title={error ?? 'Loading...'}
-          />
-        </View>
-      )}
+        )}
+      </ScrollView>
     </View>
   );
 }

@@ -62,25 +62,31 @@ export function HomeScreen({ onOpenPerson, onOpenWallet }: HomeScreenProps) {
   const activeFiltersCount = (distanceKm !== null ? 1 : 0) + interestIds.length;
 
   return (
-    <View className="flex-1 bg-background px-lg" style={{ paddingTop: insets.top + 8 }}>
+    <View className="flex-1 bg-background">
       {/* Top Header Nav Bar with Company Logo & Coins Count */}
-      <View className="flex-row items-center justify-between pb-sm">
-        <BrandLogo size="sm" />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Wallet: ${coins !== null ? coins : 0} coins`}
-          onPress={onOpenWallet}
-          className="flex-row items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 active:opacity-75"
-        >
-          <BrandIcon name="coins" size={16} />
-          <AppText variant="label" className="font-semibold text-foreground">
-            {coins !== null ? coins.toLocaleString() : '0'}
-          </AppText>
-        </Pressable>
+      <View
+        className="border-b border-nav-border bg-nav px-lg pb-3"
+        style={{ paddingTop: insets.top + 8 }}
+      >
+        <View className="flex-row items-center justify-between">
+          <BrandLogo size="sm" />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Wallet: ${coins !== null ? coins : 0} coins`}
+            onPress={onOpenWallet}
+            className="flex-row items-center gap-1.5 rounded-full border border-primary-lighter/40 bg-card/90 px-3 py-1.5 active:opacity-75"
+          >
+            <BrandIcon name="coins" size={16} />
+            <AppText variant="label" className="font-semibold text-foreground">
+              {coins !== null ? coins.toLocaleString() : '0'}
+            </AppText>
+          </Pressable>
+        </View>
       </View>
 
-      {/* Sub-bar below Nav Bar: View Switcher & Shifted Filter Button */}
-      <View className="flex-row items-center justify-between border-t border-border/40 py-2">
+      <View className="flex-1 px-lg">
+        {/* Sub-bar below Nav Bar: View Switcher & Shifted Filter Button */}
+        <View className="flex-row items-center justify-between py-2">
         {/* View Switcher: Cards vs List */}
         <View className="flex-row items-center rounded-full border border-border bg-muted/40 p-0.5">
           <Pressable
@@ -151,6 +157,7 @@ export function HomeScreen({ onOpenPerson, onOpenWallet }: HomeScreenProps) {
           <PersonListView people={people} filtered={distanceKm !== null || interestIds.length > 0} onOpen={onOpenPerson} onAdjustFilters={() => setFiltersOpen(true)} />
         </View>
       )}
+      </View>
       <AppBottomSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filter">
         <AppText variant="label">Distance</AppText>
         <View className="flex-row flex-wrap gap-sm">

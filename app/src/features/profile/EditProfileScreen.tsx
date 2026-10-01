@@ -22,12 +22,18 @@ export function EditProfileScreen({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top + 8 }}>
-      <View className="flex-row items-center gap-sm px-sm">
-        <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={back} />
-        <AppText variant="h3">Edit profile</AppText>
+    <View className="flex-1 bg-background">
+      {/* Top Header Nav Bar */}
+      <View
+        className="border-b border-nav-border bg-nav px-sm pb-2"
+        style={{ paddingTop: insets.top + 8 }}
+      >
+        <View className="flex-row items-center gap-xs">
+          <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={back} />
+          <AppText variant="h3">Edit profile</AppText>
+        </View>
       </View>
-      <ScrollView className="flex-1" contentContainerClassName="px-lg pb-xl" keyboardShouldPersistTaps="handled">
+      <ScrollView className="flex-1" contentContainerClassName="px-lg py-md pb-xl" keyboardShouldPersistTaps="handled">
         <ProfileForm onDirtyChange={setProfileDirty} />
       </ScrollView>
       <AppDialog open={confirm} onOpenChange={setConfirm} title="Discard changes?" description="Your profile edits have not been saved.">

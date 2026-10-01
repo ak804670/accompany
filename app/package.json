@@ -22,6 +22,7 @@
     "@react-navigation/native-stack": "^7.3.26",
     "@rn-primitives/avatar": "^1.2.0",
     "@rn-primitives/dialog": "^1.2.0",
+    "@rn-primitives/dropdown-menu": "^1.5.2",
     "@rn-primitives/portal": "~1.4.0",
     "@rn-primitives/separator": "^1.2.0",
     "@rn-primitives/slot": "^1.5.2",
