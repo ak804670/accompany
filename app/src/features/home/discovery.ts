@@ -9,6 +9,10 @@ export function shouldPrefetch(remaining: number, hasMore: boolean, fetching: bo
   return hasMore && !fetching && remaining >= 0 && remaining <= PREFETCH_THRESHOLD;
 }
 
+export function shouldShowDiscoveryLoader(cachedCount: number, requestPending: boolean): boolean {
+  return requestPending && cachedCount === 0;
+}
+
 export function patchProfiles<T extends { userId: string }>(current: T[], incoming: T[]): T[] {
   const byId = new Map(incoming.map((person) => [person.userId, person]));
   return current.map((person) => {

@@ -6,11 +6,14 @@ import { AppButton } from '@/components/design-system/AppButton';
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
 import { AccompanyIllustration } from '@/components/illustrations/AccompanyIllustration';
+import { syncWallet } from '@/database/session-cache';
+import { useSession } from '@/features/auth';
 import { walletService } from '@/features/wallet/wallet.service';
 import { ApiError } from '@/services/api';
 
 export function WithdrawScreen({ onBack }: { onBack: () => void }) {
   const insets = useSafeAreaInsets();
+  const { user } = useSession();
   const [coins, setCoins] = useState('');
   const [destination, setDestination] = useState('');
   const [confirming, setConfirming] = useState(false);
@@ -22,6 +25,7 @@ export function WithdrawScreen({ onBack }: { onBack: () => void }) {
     setPending(true);
     try {
       await walletService.withdraw(amount, 'upi', destination);
+      if (user?.id) await syncWallet(user.id);
       setNotice({ ok: true, message: 'Withdrawal requested. Coins stay pending until the payout is confirmed.' });
       setConfirming(false);
     } catch (caught) {

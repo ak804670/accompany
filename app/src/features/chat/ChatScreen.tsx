@@ -23,7 +23,9 @@ import { AccompanyIllustration } from '@/components/illustrations/AccompanyIllus
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
 import { useSession } from '@/features/auth';
-import { chatPanels, mergeInitialMessages, type ConversationPhase } from '@/features/chat/chat-panels';
+import { chatRepository } from '@/database/repositories/chatRepository';
+import { messageRepository } from '@/database/repositories/messageRepository';
+import { chatPanels, mergeInitialMessages, phaseForCachedThread, type ConversationPhase } from '@/features/chat/chat-panels';
 import { chatService, type CallEvent, type ChatMessage, type ConversationStatus } from '@/features/chat/chat.service';
 import { refreshDiscovery } from '@/features/home/discovery-refresh';
 import { callManager } from '@/features/calls/call-manager';
@@ -44,45 +46,74 @@ type ChatScreenProps = {
 
 export function ChatScreen({ conversationId, name, personId, online, highlightCallId, onBack, onViewProfile }: ChatScreenProps) {
   const insets = useSafeAreaInsets();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const { user } = useSession();
+  const cachedMessages = user?.id ? messageRepository.peek(user.id, conversationId) : null;
+  const cachedConversation = user?.id ? chatRepository.peek(user.id, conversationId) : null;
+  const hasInitialCache = Boolean(cachedConversation) || (cachedMessages?.length ?? 0) > 0;
+  const [messages, setMessages] = useState<ChatMessage[]>(cachedMessages ?? []);
   const [cursor, setCursor] = useState<string | null>(null);
-  const [header, setHeader] = useState({ name, personId: personId ?? null, online });
+  const [header, setHeader] = useState({
+    name: cachedConversation?.name ?? name,
+    personId: cachedConversation?.personId ?? personId ?? null,
+    online: cachedConversation?.online ?? online,
+  });
   const [draft, setDraft] = useState('');
   const [otherTyping, setOtherTyping] = useState(false);
-  const [phase, setPhase] = useState<ConversationPhase>('loading');
+  const [phase, setPhase] = useState<ConversationPhase>(phaseForCachedThread(hasInitialCache));
   const [error, setError] = useState<string | null>(null);
   const [callNotice, setCallNotice] = useState<string | null>(null);
   const [sendError, setSendError] = useState(false);
   const [sending, setSending] = useState(false);
   const [calls, setCalls] = useState<CallEvent[]>([]);
   const [pendingKind, setPendingKind] = useState<'audio' | 'video' | null>(null);
-  const { user } = useSession();
-  const [canMessage, setCanMessage] = useState(false);
-  const [canRespond, setCanRespond] = useState(false);
-  const [status, setStatus] = useState<ConversationStatus | null>(null);
-  const [blocked, setBlocked] = useState(false);
+  const [canMessage, setCanMessage] = useState(cachedConversation?.canMessage ?? false);
+  const [canRespond, setCanRespond] = useState(cachedConversation?.canRespond ?? false);
+  const [status, setStatus] = useState<ConversationStatus | null>(cachedConversation?.status ?? null);
+  const [blocked, setBlocked] = useState(Boolean(cachedConversation?.blocked));
   const [confirm, setConfirm] = useState<'block' | 'unblock' | null>(null);
   const [freshId, setFreshId] = useState<string | null>(null);
   const openedConversation = useRef(conversationId);
   if (openedConversation.current !== conversationId) {
+    const nextMessages = user?.id ? messageRepository.peek(user.id, conversationId) : null;
+    const nextConversation = user?.id ? chatRepository.peek(user.id, conversationId) : null;
+    const hasCache = Boolean(nextConversation) || (nextMessages?.length ?? 0) > 0;
     openedConversation.current = conversationId;
-    setPhase('loading');
+    setPhase(phaseForCachedThread(hasCache));
     setError(null);
-    setMessages([]);
+    setMessages(nextMessages ?? []);
     setCalls([]);
     setCursor(null);
-    setStatus(null);
-    setCanMessage(false);
-    setCanRespond(false);
-    setBlocked(false);
+    setStatus(nextConversation?.status ?? null);
+    setCanMessage(nextConversation?.canMessage ?? false);
+    setCanRespond(nextConversation?.canRespond ?? false);
+    setBlocked(Boolean(nextConversation?.blocked));
+    setHeader({
+      name: nextConversation?.name ?? name,
+      personId: nextConversation?.personId ?? personId ?? null,
+      online: nextConversation?.online ?? online,
+    });
   }
   const allowOlder = useRef(false);
   const loadingOlder = useRef(false);
   const loadGeneration = useRef(0);
   const listRef = useRef<FlatList<(ReturnType<typeof groupTimeline<ChatMessage>>)[number]>>(null);
 
-  async function loadOlder(next: string) {
+  async function loadOlder(next: string | null) {
+    if (user?.id && messages.length > 0) {
+      const local = await messageRepository.olderThan(user.id, conversationId, messages[0].createdAt);
+      const ids = new Set(messages.map((item) => item.id));
+      const older = local.filter((item) => !ids.has(item.id));
+      if (older.length > 0) {
+        setMessages((current) => {
+          const seen = new Set(current.map((item) => item.id));
+          return [...older.filter((item) => !seen.has(item.id)), ...current];
+        });
+        return;
+      }
+    }
+    if (!next) return;
     const result = await chatService.messages(conversationId, next);
+    if (user?.id) await messageRepository.saveMany(user.id, conversationId, result.messages);
     setMessages((current) => {
       const ids = new Set(current.map((item) => item.id));
       return [...result.messages.filter((item) => !ids.has(item.id)), ...current];
@@ -90,12 +121,23 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
     setCursor(result.nextCursor);
   }
 
-  const reload = useCallback(() => {
+  const reload = useCallback((silent = false) => {
     const ticket = ++loadGeneration.current;
     const id = conversationId;
-    setPhase('loading');
-    setError(null);
-    Promise.all([chatService.get(id), chatService.messages(id)]).then(([conversation, result]) => {
+    if (!silent) {
+      setPhase('loading');
+      setError(null);
+    }
+    Promise.all([chatService.get(id), chatService.messages(id)]).then(async ([conversation, result]) => {
+      if (ticket !== loadGeneration.current) return;
+      if (user?.id) {
+        try {
+          await chatRepository.saveOne(user.id, conversation);
+          await messageRepository.saveMany(user.id, id, result.messages);
+        } catch {
+          // The screen still shows the server payload when the cache write fails.
+        }
+      }
       if (ticket !== loadGeneration.current) return;
       setHeader({ name: conversation.name, personId: conversation.personId, online: conversation.online });
       setCanMessage(conversation.canMessage);
@@ -107,43 +149,64 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
       setPhase('ready');
       void chatService.markRead(id).catch(() => undefined);
     }).catch((caught: unknown) => {
-      if (ticket !== loadGeneration.current) return;
+      if (ticket !== loadGeneration.current || silent) return;
       setError(caught instanceof ApiError && caught.status === 0 ? "You're offline" : 'Unable to load messages');
       setPhase('error');
     });
-  }, [conversationId]);
+  }, [conversationId, user?.id]);
 
   useEffect(() => {
-    setMessages([]);
-    setCalls([]);
-    setCursor(null);
-    setStatus(null);
-    setCanMessage(false);
-    setCanRespond(false);
-    setBlocked(false);
+    const ticket = ++loadGeneration.current;
+    let active = true;
     allowOlder.current = false;
-    reload();
+    void (async () => {
+      let hasCache = Boolean(user?.id && (chatRepository.peek(user.id, conversationId) || (messageRepository.peek(user.id, conversationId)?.length ?? 0) > 0));
+      if (user?.id) {
+        const [storedConversation, storedMessages] = await Promise.all([
+          chatRepository.get(user.id, conversationId),
+          messageRepository.latest(user.id, conversationId),
+        ]);
+        if (!active || ticket !== loadGeneration.current) return;
+        if (storedConversation) {
+          setHeader({ name: storedConversation.name, personId: storedConversation.personId, online: storedConversation.online });
+          if (storedConversation.canMessage !== undefined) setCanMessage(storedConversation.canMessage);
+          if (storedConversation.canRespond !== undefined) setCanRespond(storedConversation.canRespond);
+          setStatus(storedConversation.status);
+          setBlocked(Boolean(storedConversation.blocked));
+          hasCache = true;
+        }
+        if (storedMessages.length > 0) {
+          setMessages(storedMessages);
+          hasCache = true;
+        }
+      }
+      if (!active || ticket !== loadGeneration.current) return;
+      setPhase(phaseForCachedThread(hasCache));
+      reload(hasCache);
+    })();
     return () => {
+      active = false;
       loadGeneration.current += 1;
     };
-  }, [reload]);
+  }, [conversationId, reload, user?.id]);
 
   useEffect(() => {
     socketService.join(conversationId);
     const apply = (payload: unknown) => {
       const message = payload as LiveMessage;
       if (!message || message.conversationId !== conversationId || !message.messageId) return;
+      const next: ChatMessage = {
+        id: message.messageId,
+        senderId: message.senderId,
+        body: message.content,
+        createdAt: message.createdAt,
+        mine: message.senderId === user?.id,
+        clientMessageId: message.clientMessageId,
+      };
+      if (user?.id) void messageRepository.saveMany(user.id, conversationId, [next]).catch(() => undefined);
       setMessages((current) => {
         if (current.some((item) => item.id === message.messageId)) return current;
         const pendingIndex = current.findIndex((item) => item.id === message.clientMessageId || item.clientMessageId === message.clientMessageId);
-        const next = {
-          id: message.messageId,
-          senderId: message.senderId,
-          body: message.content,
-          createdAt: message.createdAt,
-          mine: message.senderId === user?.id,
-          clientMessageId: message.clientMessageId,
-        };
         if (pendingIndex >= 0) return current.map((item, index) => (index === pendingIndex ? next : item));
         return [...current, next];
       });
@@ -245,6 +308,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
     setFreshId(pendingId);
     setMessages((current) => [...current, pending]);
     setDraft('');
+    if (user?.id) void messageRepository.savePending(user.id, conversationId, pending).catch(() => undefined);
     try {
       socketService.typing(conversationId, false);
       const message = socketService.connected
@@ -257,9 +321,17 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
           clientMessageId: saved.clientMessageId,
         }))
         : await chatService.send(conversationId, body, pendingId);
+      if (user?.id) {
+        try {
+          await messageRepository.confirm(user.id, conversationId, pendingId, message);
+        } catch {
+          // The sent message stays on screen even if the local write fails.
+        }
+      }
       setFreshId(message.id);
       setMessages((current) => current.map((item) => (item.id === pendingId ? message : item)));
     } catch {
+      if (user?.id) await messageRepository.remove(user.id, conversationId, pendingId);
       setMessages((current) => current.filter((item) => item.id !== pendingId));
       setDraft(body);
       setFreshId(null);
@@ -345,7 +417,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
         ) : panels.content === 'error' ? (
           <View className="flex-1 justify-center px-lg">
             <IllustratedState name={illustrationForError(error ?? 'Unable to load messages')} title={error ?? 'Unable to load messages'}>
-              <AppButton variant="outline" onPress={reload}>Try again</AppButton>
+              <AppButton variant="outline" onPress={() => reload()}>Try again</AppButton>
             </IllustratedState>
           </View>
         ) : panels.content === 'empty' ? (
@@ -405,7 +477,26 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
           <AppText variant="bodyM">Someone would like to connect</AppText>
           <View className="flex-row gap-sm">
             <AppButton variant="outline" className="flex-1" onPress={() => void chatService.reject(conversationId).then(() => onBack())}>Decline</AppButton>
-            <AppButton className="flex-1" onPress={() => void chatService.accept(conversationId).then(() => { setCanMessage(true); setCanRespond(false); setStatus('accepted'); })}>Accept</AppButton>
+            <AppButton className="flex-1" onPress={() => void chatService.accept(conversationId).then(() => {
+              setCanMessage(true);
+              setCanRespond(false);
+              setStatus('accepted');
+              if (user?.id) {
+                void chatRepository.saveOne(user.id, {
+                  id: conversationId,
+                  personId: header.personId ?? '',
+                  name: header.name,
+                  preview: null,
+                  updatedAt: new Date().toISOString(),
+                  unreadCount: 0,
+                  online: header.online,
+                  status: 'accepted',
+                  incoming: false,
+                  canMessage: true,
+                  canRespond: false,
+                });
+              }
+            })}>Accept</AppButton>
           </View>
         </View>
       ) : panels.footer === 'composer' ? (

@@ -1,4 +1,4 @@
-import { formatRate, mergeProfiles, nextDeckIndex, patchProfiles, shouldPrefetch, shouldCompleteSwipe, SWIPE_THRESHOLD, PREFETCH_THRESHOLD } from '@/features/home/discovery';
+import { formatRate, mergeProfiles, nextDeckIndex, patchProfiles, shouldPrefetch, shouldShowDiscoveryLoader, shouldCompleteSwipe, SWIPE_THRESHOLD, PREFETCH_THRESHOLD } from '@/features/home/discovery';
 
 describe('discovery swipe', () => {
   it('returns the card when the drag is below the threshold', () => {
@@ -26,6 +26,12 @@ describe('discovery swipe', () => {
       [{ userId: 'b' }, { userId: 'c' }],
     );
     expect(merged.map((person) => person.userId)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('skips the discovery loader when cached profiles are already on screen', () => {
+    expect(shouldShowDiscoveryLoader(0, true)).toBe(true);
+    expect(shouldShowDiscoveryLoader(10, true)).toBe(false);
+    expect(shouldShowDiscoveryLoader(0, false)).toBe(false);
   });
 
   it('prefetches only when four or fewer profiles remain', () => {

@@ -12,13 +12,14 @@ import { DiscoveryDeck } from '@/components/home/DiscoveryDeck';
 import { PersonListView } from '@/components/home/PersonListView';
 import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
-import { DISCOVERY_RADII_KM } from '@/features/home/discovery';
+import { coinRepository, subscribeWallet } from '@/database/repositories/coinRepository';
+import { useSession } from '@/features/auth';
+import { DISCOVERY_RADII_KM, shouldShowDiscoveryLoader } from '@/features/home/discovery';
 import { captureLocation } from '@/features/home/location';
 import { onDiscoveryRefresh } from '@/features/home/discovery-refresh';
 import { peopleService } from '@/features/home/people.service';
 import { useDiscoveryDeck } from '@/features/home/useDiscoveryDeck';
 import { useProfile } from '@/features/profile/hooks/useProfile';
-import { walletService } from '@/features/wallet/wallet.service';
 
 type HomeScreenProps = {
   onOpenPerson: (userId: string) => void;
@@ -27,6 +28,7 @@ type HomeScreenProps = {
 
 export function HomeScreen({ onOpenPerson, onOpenWallet }: HomeScreenProps) {
   const insets = useSafeAreaInsets();
+  const { user } = useSession();
   const { profile } = useProfile();
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [interestIds, setInterestIds] = useState<string[]>([]);
@@ -39,12 +41,21 @@ export function HomeScreen({ onOpenPerson, onOpenWallet }: HomeScreenProps) {
   useEffect(() => onDiscoveryRefresh(() => { void refresh(); }), [refresh]);
 
   useEffect(() => {
+    if (!user?.id) return;
+    const userId = user.id;
     let active = true;
-    void walletService.summary().then((summary) => {
-      if (active) setCoins(summary.availableCoins);
-    }).catch(() => undefined);
-    return () => { active = false; };
-  }, []);
+    const pull = () => {
+      void coinRepository.getSummary(userId).then((summary) => {
+        if (active && summary) setCoins(summary.availableCoins);
+      });
+    };
+    pull();
+    const unsubscribe = subscribeWallet(pull);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [user?.id]);
 
   async function enableNearby(radius: number) {
     const location = await captureLocation();
@@ -135,7 +146,7 @@ export function HomeScreen({ onOpenPerson, onOpenWallet }: HomeScreenProps) {
       </View>
 
       {locationNote ? <AppText className="mt-xs" variant="caption" tone="warning">{locationNote}</AppText> : null}
-      {loading ? (
+      {shouldShowDiscoveryLoader(people.length, loading) ? (
         <View className="mt-md gap-sm">
           <View className="h-72 rounded-md bg-muted" />
           <View className="h-6 w-32 rounded-sm bg-muted" />

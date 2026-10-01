@@ -2,6 +2,10 @@ import type { ChatMessage, ConversationStatus } from '@/features/chat/chat.servi
 
 export type ConversationPhase = 'loading' | 'ready' | 'error';
 
+export function phaseForCachedThread(hasCachedThread: boolean): ConversationPhase {
+  return hasCachedThread ? 'ready' : 'loading';
+}
+
 export type ChatContent = 'loading' | 'error' | 'empty' | 'timeline';
 
 export type ChatFooter = 'none' | 'blocked' | 'incoming' | 'composer' | 'pending' | 'rejected';

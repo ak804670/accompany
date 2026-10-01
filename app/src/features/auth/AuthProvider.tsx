@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { warmSession, wipeUserCache } from '@/database/session-cache';
 import { configureApiAuth } from '@/services/api';
 import { socketService } from '@/services/realtime/socket';
 import { secureStorage } from '@/services/storage';
@@ -68,9 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (status === 'authenticated') socketService.connect();
+    if (status === 'authenticated' && user?.id) {
+      void warmSession(user.id);
+      socketService.connect();
+    }
     if (status === 'unauthenticated') socketService.disconnect();
-  }, [status]);
+  }, [status, user?.id]);
 
   const requestOtp = useCallback(async (channel: AuthChannel, destination: string) => {
     setStatus('requestingOtp');
@@ -102,14 +106,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    const userId = user?.id;
     try {
       await authService.logout();
     } finally {
+      if (userId) await wipeUserCache(userId);
       setUser(null);
       setError(null);
       setStatus('unauthenticated');
     }
-  }, []);
+  }, [user?.id]);
 
   const clearError = useCallback(() => {
     setError(null);

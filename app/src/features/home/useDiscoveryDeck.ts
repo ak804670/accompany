@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { prefetchPhotos } from '@/components/home/photo-cache';
+import { discoveryFilterKey, discoveryRepository } from '@/database/repositories/discoveryRepository';
+import { useSession } from '@/features/auth';
 import {
   IMAGE_PREFETCH_AHEAD,
   INITIAL_BATCH_SIZE,
@@ -14,6 +16,9 @@ import { peopleService, type OnlinePerson } from '@/features/home/people.service
 import { ApiError } from '@/services/api';
 
 export function useDiscoveryDeck(distanceKm: number | null, interestIds: string[]) {
+  const { user } = useSession();
+  const userId = user?.id ?? null;
+  const filterKey = discoveryFilterKey(distanceKm, interestIds);
   const [people, setPeople] = useState<OnlinePerson[]>([]);
   const [index, setIndex] = useState(0);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -50,28 +55,41 @@ export function useDiscoveryDeck(distanceKm: number | null, interestIds: string[
         interestIds,
       });
       const incoming = result.people;
+      const persist = (peopleToStore: OnlinePerson[], nextCursor: string | null) => {
+        if (!userId) return;
+        void discoveryRepository.replace(userId, filterKey, peopleToStore, nextCursor).catch(() => undefined);
+      };
+      if (mode === 'append' && incoming.length === 0) {
+        setCursor(null);
+        cursorRef.current = null;
+        failedCursor.current = null;
+        if (userId) void discoveryRepository.saveCursor(userId, filterKey, null).catch(() => undefined);
+        return;
+      }
       if (mode === 'replace') {
         setPeople(incoming);
         setIndex(0);
         setCursor(result.nextCursor);
         cursorRef.current = result.nextCursor;
+        persist(incoming, result.nextCursor);
         discoveryLog('initial batch', { size: incoming.length, hasMore: result.nextCursor !== null });
         await warmImages(incoming, 0, true);
       } else if (mode === 'append') {
-        setPeople((current) => {
-          const merged = mergeProfiles(current, incoming);
-          discoveryLog('prefetch completed', {
-            added: merged.length - current.length,
-            duplicates: incoming.length - (merged.length - current.length),
-            deck: merged.length,
-          });
-          return merged;
+        const merged = mergeProfiles(peopleRef.current, incoming);
+        discoveryLog('prefetch completed', {
+          added: merged.length - peopleRef.current.length,
+          duplicates: incoming.length - (merged.length - peopleRef.current.length),
+          deck: merged.length,
         });
+        setPeople(merged);
         setCursor(result.nextCursor);
         cursorRef.current = result.nextCursor;
+        persist(merged, result.nextCursor);
         void warmImages(incoming, 0, false);
       } else if (peopleRef.current.length > 0) {
-        setPeople((current) => patchProfiles(current, incoming));
+        const patched = patchProfiles(peopleRef.current, incoming);
+        setPeople(patched);
+        persist(patched, cursorRef.current);
         discoveryLog('status patched', { incoming: incoming.length, index: indexRef.current });
       }
       failedCursor.current = null;
@@ -90,12 +108,32 @@ export function useDiscoveryDeck(distanceKm: number | null, interestIds: string[
       if (mode === 'append') fetchingMore.current = false;
       if (mode === 'replace') setLoading(false);
     }
-  }, [distanceKm, interestIds, warmImages]);
+  }, [distanceKm, filterKey, interestIds, userId, warmImages]);
 
   useEffect(() => {
-    setLoading(true);
-    void load('replace');
-  }, [load]);
+    let active = true;
+    void (async () => {
+      const cached = userId ? await discoveryRepository.read(userId, filterKey) : { people: [], cursor: null };
+      if (!active) return;
+      if (cached.people.length > 0) {
+        peopleRef.current = cached.people;
+        indexRef.current = 0;
+        cursorRef.current = cached.cursor;
+        setPeople(cached.people);
+        setIndex(0);
+        setCursor(cached.cursor);
+        setLoading(false);
+        setError(null);
+        void load('refresh');
+      } else {
+        setLoading(true);
+        void load('replace');
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [filterKey, load, userId]);
 
   useEffect(() => {
     const remaining = people.length - index - 1;

@@ -19,6 +19,8 @@ import { OwnProfileScreen } from '@/features/profile/OwnProfileScreen';
 import { AddCoinsScreen } from '@/features/wallet/AddCoinsScreen';
 import { WalletScreen } from '@/features/wallet/WalletScreen';
 import { WithdrawScreen } from '@/features/wallet/WithdrawScreen';
+import { chatRepository } from '@/database/repositories/chatRepository';
+import { useSession } from '@/features/auth';
 import { profileIsDirty, setProfileDirty } from '@/features/profile/profile-guard';
 import { subscribeRealtime } from '@/services/realtime/socket';
 import { useTheme, palette } from '@/theme';
@@ -45,6 +47,7 @@ type ShellParamList = {
 const Stack = createNativeStackNavigator<ShellParamList>();
 
 function TabsScreen({ navigation }: NativeStackScreenProps<ShellParamList, 'Tabs'>) {
+  const { user } = useSession();
   const [tab, setTab] = useState<MainTab>('home');
   const [pendingTab, setPendingTab] = useState<MainTab | null>(null);
   const [unread, setUnread] = useState(0);
@@ -60,14 +63,27 @@ function TabsScreen({ navigation }: NativeStackScreenProps<ShellParamList, 'Tabs
   }, []);
 
   useEffect(() => {
+    let active = true;
     const refresh = () => {
-      void chatService.list().then((result) => setUnread(result.unread)).catch(() => undefined);
+      void chatService.list().then(async (result) => {
+        if (user?.id) await chatRepository.savePage(user.id, result.conversations, result.unread, result.nextCursor, 'merge');
+        if (active) setUnread(result.unread);
+      }).catch(() => undefined);
     };
+    if (user?.id) {
+      void chatRepository.unread(user.id).then((count) => {
+        if (active && count !== null) setUnread(count);
+      });
+    }
     refresh();
-    return subscribeRealtime((event) => {
+    const unsubscribe = subscribeRealtime((event) => {
       if (event.type === 'message' || event.type === 'read' || event.type === 'NEW_MESSAGE' || event.type === 'MESSAGE_READ' || event.type === 'CHAT_REQUEST_RECEIVED' || event.type === 'CHAT_REQUEST_ACCEPTED') refresh();
     });
-  }, [tab]);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [tab, user?.id]);
 
   function changeTab(next: MainTab) {
     if (next === tab) return;

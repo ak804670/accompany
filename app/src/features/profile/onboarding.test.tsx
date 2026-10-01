@@ -1,5 +1,6 @@
 import { render, screen, userEvent } from '@testing-library/react-native';
 
+import { resetSessionCache } from '@/database/session-cache';
 import { ProfileProvider } from '@/features/profile/ProfileProvider';
 import { profileService } from '@/features/profile/services/profile.service';
 import type { UserProfile } from '@/features/profile/types';
@@ -82,6 +83,7 @@ function renderGate() {
 
 describe('profile onboarding', () => {
   beforeEach(() => {
+    resetSessionCache();
     jest.clearAllMocks();
   });
 
@@ -110,11 +112,13 @@ describe('profile onboarding', () => {
     service.get.mockResolvedValue(profile({ step: 'interests', displayName: 'Anish' }));
     service.interests.mockResolvedValue([{ id: '1', name: 'Music', slug: 'music' }]);
     service.saveInterests.mockResolvedValue(profile({ step: 'preferences', interests: [{ id: '1', name: 'Music', slug: 'music' }] }));
-    await renderGate();
+    const first = await renderGate();
     await userEvent.press(await screen.findByRole('button', { name: 'Music' }));
     await userEvent.press(screen.getByRole('button', { name: 'Continue' }));
-    expect(service.saveInterests).toHaveBeenCalledWith(['1']);
+    expect(service.saveInterests).toHaveBeenCalledWith(['1'], []);
 
+    await first.unmount();
+    resetSessionCache();
     service.get.mockResolvedValue(profile({ step: 'photo' }));
     service.uploadPhoto.mockRejectedValue(new Error('upload failed'));
     await renderGate();

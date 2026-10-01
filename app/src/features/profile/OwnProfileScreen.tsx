@@ -11,6 +11,7 @@ import { PersonAvatar } from '@/components/home/PersonAvatar';
 import { ProfileSection } from '@/components/profile/ProfileSection';
 import { useAuth, useSession } from '@/features/auth';
 import { useTheme, type ThemePreference } from '@/theme';
+import { profileRepository } from '@/database/repositories/profileRepository';
 import { formatRate } from '@/features/home/discovery';
 import { getOrDetectLocationName } from '@/features/home/location';
 import { profileService } from '@/features/profile/services/profile.service';
@@ -34,16 +35,26 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
 
   useFocusEffect(useCallback(() => {
     let active = true;
-    void profileService.rates?.()?.then((value) => {
-      if (active) setRates(value);
-    }).catch(() => undefined);
+    void (async () => {
+      if (user?.id) {
+        const cached = profileRepository.peekRates(user.id) ?? await profileRepository.getRates(user.id);
+        if (active && cached) setRates(cached);
+      }
+      try {
+        const value = await profileService.rates();
+        if (user?.id) await profileRepository.saveRates(user.id, value);
+        if (active) setRates(value);
+      } catch {
+        // Keep the cached rates when the refresh fails.
+      }
+    })();
     void getOrDetectLocationName().then((loc) => {
       if (active && loc) setLocationName(loc);
     }).catch(() => undefined);
     return () => {
       active = false;
     };
-  }, []));
+  }, [user?.id]));
 
   return (
     <View className="flex-1 bg-background">

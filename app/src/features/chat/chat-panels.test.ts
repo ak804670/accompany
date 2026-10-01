@@ -1,9 +1,15 @@
-import { chatPanels, mergeInitialMessages } from '@/features/chat/chat-panels';
+import { chatPanels, mergeInitialMessages, phaseForCachedThread } from '@/features/chat/chat-panels';
 import type { ChatMessage } from '@/features/chat/chat.service';
 
 const base = { status: 'accepted' as const, blocked: false, canMessage: true, canRespond: false, hasTimeline: true };
 
 describe('chat panels', () => {
+  it('opens a cached thread without the loading phase', () => {
+    expect(phaseForCachedThread(true)).toBe('ready');
+    expect(phaseForCachedThread(false)).toBe('loading');
+    expect(chatPanels({ ...base, phase: phaseForCachedThread(true) }).content).toBe('timeline');
+  });
+
   it('keeps loading ahead of a pending request', () => {
     expect(chatPanels({ ...base, phase: 'loading', status: 'pending', canMessage: false, hasTimeline: false })).toEqual({
       content: 'loading',

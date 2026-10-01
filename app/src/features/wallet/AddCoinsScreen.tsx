@@ -6,6 +6,7 @@ import { AppButton } from '@/components/design-system/AppButton';
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
 import { AccompanyIllustration } from '@/components/illustrations/AccompanyIllustration';
+import { coinRepository } from '@/database/repositories/coinRepository';
 import { formatInr, walletService, type CoinPackage } from '@/features/wallet/wallet.service';
 import { ApiError } from '@/services/api';
 
@@ -16,7 +17,21 @@ export function AddCoinsScreen({ onBack }: { onBack: () => void }) {
   const [pending, setPending] = useState<string | null>(null);
 
   useEffect(() => {
-    void walletService.packages().then((result) => setPackages(result.packages)).catch(() => setNotice({ ok: false, message: "Couldn't load coin packages." }));
+    let active = true;
+    void (async () => {
+      const cached = await coinRepository.getPackages();
+      if (active && cached.length > 0) setPackages(cached);
+      try {
+        const result = await walletService.packages();
+        if (active) setPackages(result.packages);
+        await coinRepository.savePackages(result.packages);
+      } catch {
+        if (active && cached.length === 0) setNotice({ ok: false, message: "Couldn't load coin packages." });
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function buy(item: CoinPackage) {

@@ -8,12 +8,16 @@ import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
 import { BrandIcon } from '@/components/icons/BrandIcon';
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
+import { coinRepository } from '@/database/repositories/coinRepository';
+import { syncWallet } from '@/database/session-cache';
+import { useSession } from '@/features/auth';
 import { walletService, type WalletSummary, type WalletTransaction } from '@/features/wallet/wallet.service';
 
 type WalletScreenProps = { onBack: () => void; onAdd: () => void; onWithdraw: () => void };
 
 export function WalletScreen({ onBack, onAdd, onWithdraw }: WalletScreenProps) {
   const insets = useSafeAreaInsets();
+  const { user } = useSession();
   const [summary, setSummary] = useState<WalletSummary | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -21,18 +25,48 @@ export function WalletScreen({ onBack, onAdd, onWithdraw }: WalletScreenProps) {
 
   useFocusEffect(useCallback(() => {
     let active = true;
-    void Promise.all([walletService.summary(), walletService.transactions()]).then(([wallet, history]) => {
-      if (!active) return;
-      setSummary(wallet);
-      setTransactions(history.transactions);
-      setError(null);
-    }).catch(() => {
-      if (active) setError("Couldn't load your coins.");
-    }).finally(() => {
-      if (active) setReady(true);
-    });
+    const userId = user?.id;
+    void (async () => {
+      let showedCache = false;
+      if (userId) {
+        const [cachedSummary, cachedTransactions] = await Promise.all([
+          coinRepository.getSummary(userId),
+          coinRepository.getTransactions(userId),
+        ]);
+        if (!active) return;
+        if (cachedSummary) {
+          setSummary(cachedSummary);
+          setTransactions(cachedTransactions);
+          setReady(true);
+          showedCache = true;
+        }
+      }
+      try {
+        if (userId) {
+          const synced = await syncWallet(userId);
+          if (!synced) throw new Error('wallet');
+          const [freshSummary, freshTransactions] = await Promise.all([
+            coinRepository.getSummary(userId),
+            coinRepository.getTransactions(userId),
+          ]);
+          if (!active) return;
+          if (freshSummary) setSummary(freshSummary);
+          setTransactions(freshTransactions);
+        } else {
+          const [wallet, history] = await Promise.all([walletService.summary(), walletService.transactions()]);
+          if (!active) return;
+          setSummary(wallet);
+          setTransactions(history.transactions);
+        }
+        if (active) setError(null);
+      } catch {
+        if (active && !showedCache) setError("Couldn't load your coins.");
+      } finally {
+        if (active) setReady(true);
+      }
+    })();
     return () => { active = false; };
-  }, []));
+  }, [user?.id]));
 
   return (
     <View className="flex-1 bg-background">

@@ -10,6 +10,8 @@ import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
 import { OnlineStatus } from '@/components/home/OnlineStatus';
 import { PersonAvatar } from '@/components/home/PersonAvatar';
+import { discoveryRepository } from '@/database/repositories/discoveryRepository';
+import { useSession } from '@/features/auth';
 import { chatService } from '@/features/chat/chat.service';
 import { formatDistance, formatRate } from '@/features/home/discovery';
 import { peopleService, type OnlinePerson } from '@/features/home/people.service';
@@ -22,6 +24,7 @@ type PersonScreenProps = {
 
 export function PersonScreen({ userId, onBack, onConversation }: PersonScreenProps) {
   const insets = useSafeAreaInsets();
+  const { user } = useSession();
   const [person, setPerson] = useState<OnlinePerson | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -30,15 +33,27 @@ export function PersonScreen({ userId, onBack, onConversation }: PersonScreenPro
 
   useEffect(() => {
     let cancelled = false;
-    peopleService.person(userId).then((value) => {
-      if (!cancelled) setPerson(value);
-    }).catch(() => {
-      if (!cancelled) setError("Couldn't load this person");
-    });
+    void (async () => {
+      let showedCache = false;
+      if (user?.id) {
+        const cached = await discoveryRepository.findPerson(user.id, userId);
+        if (cancelled) return;
+        if (cached) {
+          setPerson(cached);
+          showedCache = true;
+        }
+      }
+      try {
+        const value = await peopleService.person(userId);
+        if (!cancelled) setPerson(value);
+      } catch {
+        if (!cancelled && !showedCache) setError("Couldn't load this person");
+      }
+    })();
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [user?.id, userId]);
 
   async function sendRequest() {
     if (!person) return;

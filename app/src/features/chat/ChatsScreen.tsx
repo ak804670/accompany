@@ -8,6 +8,9 @@ import { AppText } from '@/components/design-system/AppText';
 import { BrandIcon } from '@/components/icons/BrandIcon';
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { illustrationForError, type IllustrationName } from '@/assets/illustrations/illustrationRegistry';
+import { chatRepository } from '@/database/repositories/chatRepository';
+import { warmSession } from '@/database/session-cache';
+import { useSession } from '@/features/auth';
 import { CallsTab } from '@/features/chat/CallsTab';
 import { chatService, type ConversationSummary } from '@/features/chat/chat.service';
 import { ApiError } from '@/services/api';
@@ -22,6 +25,7 @@ const TABS: ChatTab[] = ['requests', 'conversations', 'calls'];
 
 export function ChatsScreen({ onOpen }: ChatsScreenProps) {
   const insets = useSafeAreaInsets();
+  const { user } = useSession();
   const [pageWidth, setPageWidth] = useState(0);
   const pager = useRef<ScrollView>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -36,17 +40,48 @@ export function ChatsScreen({ onOpen }: ChatsScreenProps) {
   const load = useCallback(async (next?: string | null, replace = true) => {
     try {
       const result = await chatService.list(next);
+      if (user?.id) {
+        await chatRepository.savePage(user.id, result.conversations, result.unread, result.nextCursor, replace ? 'replace' : 'append');
+      }
       setItems((current) => (replace ? result.conversations : [...current, ...result.conversations]));
       setCursor(result.nextCursor);
       setError(null);
     } catch (caught) {
       setError(!(caught instanceof ApiError) || caught.status === 0 ? "You're offline" : "We couldn't load chats right now.");
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
-    void load(null, true).finally(() => setLoading(false));
-  }, [load]);
+    let active = true;
+    void (async () => {
+      if (user?.id) {
+        const cached = await chatRepository.list(user.id);
+        if (!active) return;
+        if (cached.conversations.length > 0) {
+          setItems(cached.conversations);
+          setCursor(cached.nextCursor);
+          setLoading(false);
+        }
+        const warmed = await warmSession(user.id);
+        if (!active) return;
+        const fresh = await chatRepository.list(user.id);
+        if (fresh.conversations.length > 0) {
+          setItems(fresh.conversations);
+          setCursor(fresh.nextCursor);
+          setLoading(false);
+        }
+        if (warmed.chatsSynced) {
+          setLoading(false);
+          return;
+        }
+      }
+      await load(null, true);
+      if (active) setLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [load, user?.id]);
 
   const needle = query.trim().toLowerCase();
   const requestCount = items.filter((item) => item.status === 'pending').length;

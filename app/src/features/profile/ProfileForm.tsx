@@ -8,6 +8,8 @@ import { AppInput } from '@/components/design-system/AppInput';
 import { AppText } from '@/components/design-system/AppText';
 import { BrandIcon } from '@/components/icons/BrandIcon';
 import { InterestTagInput } from '@/components/profile/InterestTagInput';
+import { profileRepository } from '@/database/repositories/profileRepository';
+import { useSession } from '@/features/auth';
 import { captureLocation, getOrDetectLocationName } from '@/features/home/location';
 import { refreshDiscovery } from '@/features/home/discovery-refresh';
 import { useProfile } from '@/features/profile/hooks/useProfile';
@@ -30,6 +32,7 @@ function parseRate(value: string): number | null {
 }
 
 export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean) => void }) {
+  const { user } = useSession();
   const { profile, setProfile } = useProfile();
   const [name, setName] = useState(profile?.displayName ?? '');
   const [bio, setBio] = useState(profile?.bio ?? '');
@@ -52,12 +55,31 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
   }, []);
 
   useEffect(() => {
-    void profileService.rates().then((value) => {
-      const next = { chat: rateText(value.chat), audio: rateText(value.audio), video: rateText(value.video) };
-      setRates(next);
-      setSavedRates(next);
-    }).catch(() => undefined);
-  }, []);
+    let active = true;
+    void (async () => {
+      if (user?.id) {
+        const cached = profileRepository.peekRates(user.id) ?? await profileRepository.getRates(user.id);
+        if (active && cached) {
+          const next = { chat: rateText(cached.chat), audio: rateText(cached.audio), video: rateText(cached.video) };
+          setRates(next);
+          setSavedRates(next);
+        }
+      }
+      try {
+        const value = await profileService.rates();
+        if (user?.id) await profileRepository.saveRates(user.id, value);
+        if (!active) return;
+        const next = { chat: rateText(value.chat), audio: rateText(value.audio), video: rateText(value.video) };
+        setRates(next);
+        setSavedRates(next);
+      } catch {
+        // Keep the cached rates when the refresh fails.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -124,6 +146,13 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
         ...(video !== null ? { video } : {}),
       };
       const saved = Object.keys(ratePayload).length ? await profileService.saveRates(ratePayload) : null;
+      if (saved && user?.id) {
+        try {
+          await profileRepository.saveRates(user.id, saved);
+        } catch {
+          // The server already stored the rates.
+        }
+      }
       if (next) setProfile(next);
       setSavedRates(rates);
       setError(null);
