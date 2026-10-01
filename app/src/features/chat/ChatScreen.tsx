@@ -156,17 +156,27 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
   }, [conversationId, user?.id]);
 
   useEffect(() => {
-    const ticket = ++loadGeneration.current;
     let active = true;
     allowOlder.current = false;
+    const hasMemoryCache = Boolean(user?.id && (
+      chatRepository.peek(user.id, conversationId)
+      || (messageRepository.peek(user.id, conversationId)?.length ?? 0) > 0
+    ));
+    // A cached thread is already renderable. Start syncing immediately instead of
+    // waiting for SQLite reads to complete before requesting the latest messages.
+    if (hasMemoryCache) {
+      void Promise.resolve().then(() => {
+        if (active) reload(true);
+      });
+    }
     void (async () => {
-      let hasCache = Boolean(user?.id && (chatRepository.peek(user.id, conversationId) || (messageRepository.peek(user.id, conversationId)?.length ?? 0) > 0));
+      let hasCache = hasMemoryCache;
       if (user?.id) {
         const [storedConversation, storedMessages] = await Promise.all([
-          chatRepository.get(user.id, conversationId),
+          hasMemoryCache ? Promise.resolve(null) : chatRepository.get(user.id, conversationId),
           messageRepository.latest(user.id, conversationId),
         ]);
-        if (!active || ticket !== loadGeneration.current) return;
+        if (!active) return;
         if (storedConversation) {
           setHeader({ name: storedConversation.name, personId: storedConversation.personId, online: storedConversation.online });
           if (storedConversation.canMessage !== undefined) setCanMessage(storedConversation.canMessage);
@@ -176,13 +186,15 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
           hasCache = true;
         }
         if (storedMessages.length > 0) {
-          setMessages(storedMessages);
+          setMessages((current) => mergeInitialMessages(storedMessages, current));
           hasCache = true;
         }
       }
-      if (!active || ticket !== loadGeneration.current) return;
-      setPhase(phaseForCachedThread(hasCache));
-      reload(hasCache);
+      if (!active) return;
+      if (!hasMemoryCache) {
+        setPhase(phaseForCachedThread(hasCache));
+        reload(hasCache);
+      }
     })();
     return () => {
       active = false;
@@ -536,4 +548,3 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
     </KeyboardAvoidingView>
   );
 }
-

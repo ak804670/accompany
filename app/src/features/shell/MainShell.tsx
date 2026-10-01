@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { callManager } from '@/features/calls/call-manager';
 import { callService } from '@/features/calls/call.service';
-import { Animated, View } from 'react-native';
+import { View } from 'react-native';
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AppButton } from '@/components/design-system/AppButton';
@@ -45,13 +45,15 @@ type ShellParamList = {
 };
 
 const Stack = createNativeStackNavigator<ShellParamList>();
+const StableHomeScreen = memo(HomeScreen);
+const StableChatsScreen = memo(ChatsScreen);
+const StableOwnProfileScreen = memo(OwnProfileScreen);
 
 function TabsScreen({ navigation }: NativeStackScreenProps<ShellParamList, 'Tabs'>) {
   const { user } = useSession();
   const [tab, setTab] = useState<MainTab>('home');
   const [pendingTab, setPendingTab] = useState<MainTab | null>(null);
   const [unread, setUnread] = useState(0);
-  const opacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const beat = () => {
@@ -83,7 +85,7 @@ function TabsScreen({ navigation }: NativeStackScreenProps<ShellParamList, 'Tabs
       active = false;
       unsubscribe();
     };
-  }, [tab, user?.id]);
+  }, [user?.id]);
 
   function changeTab(next: MainTab) {
     if (next === tab) return;
@@ -91,13 +93,10 @@ function TabsScreen({ navigation }: NativeStackScreenProps<ShellParamList, 'Tabs
       setPendingTab(next);
       return;
     }
-    Animated.timing(opacity, { toValue: 0, duration: 90, useNativeDriver: true }).start(() => {
-      setTab(next);
-      Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
-    });
+    setTab(next);
   }
 
-  function openConversation(item: ConversationSummary, highlightCallId?: string) {
+  const openConversation = useCallback((item: ConversationSummary, highlightCallId?: string) => {
     navigation.navigate('Chat', {
       conversationId: item.id,
       name: item.name,
@@ -105,24 +104,29 @@ function TabsScreen({ navigation }: NativeStackScreenProps<ShellParamList, 'Tabs
       online: item.online,
       highlightCallId,
     });
-  }
+  }, [navigation]);
+
+  const openPerson = useCallback((userId: string) => navigation.navigate('Person', { userId }), [navigation]);
+  const openWallet = useCallback(() => navigation.navigate('Wallet'), [navigation]);
+  const editProfile = useCallback(() => navigation.navigate('EditProfile'), [navigation]);
+  const openBlockedPeople = useCallback(() => navigation.navigate('BlockedPeople'), [navigation]);
 
   return (
     <View className="flex-1 bg-background">
-      <Animated.View className="flex-1" style={{ opacity }}>
+      <View className="flex-1">
         <View className="flex-1" style={{ display: tab === 'home' ? 'flex' : 'none' }}>
-          <HomeScreen
-            onOpenPerson={(userId) => navigation.navigate('Person', { userId })}
-            onOpenWallet={() => navigation.navigate('Wallet')}
+          <StableHomeScreen
+            onOpenPerson={openPerson}
+            onOpenWallet={openWallet}
           />
         </View>
         <View className="absolute inset-0" style={{ display: tab === 'chats' ? 'flex' : 'none' }}>
-          <ChatsScreen onOpen={openConversation} />
+          <StableChatsScreen onOpen={openConversation} />
         </View>
         <View className="absolute inset-0" style={{ display: tab === 'profile' ? 'flex' : 'none' }}>
-          <OwnProfileScreen onEdit={() => navigation.navigate('EditProfile')} onBlocked={() => navigation.navigate('BlockedPeople')} onWallet={() => navigation.navigate('Wallet')} />
+          <StableOwnProfileScreen onEdit={editProfile} onBlocked={openBlockedPeople} onWallet={openWallet} />
         </View>
-      </Animated.View>
+      </View>
       <BottomNavigation value={tab} unread={unread} onChange={changeTab} />
       <AppDialog open={pendingTab !== null} onOpenChange={(open) => { if (!open) setPendingTab(null); }} title="Discard changes?" description="Your profile edits have not been saved.">
         <View className="flex-row gap-sm">
