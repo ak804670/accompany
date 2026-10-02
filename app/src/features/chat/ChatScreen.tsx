@@ -29,6 +29,7 @@ import { chatPanels, mergeInitialMessages, phaseForCachedThread, type Conversati
 import { chatService, type CallEvent, type ChatMessage, type ConversationStatus } from '@/features/chat/chat.service';
 import { refreshDiscovery } from '@/features/home/discovery-refresh';
 import { callManager } from '@/features/calls/call-manager';
+import { callService } from '@/features/calls/call.service';
 import { groupTimeline, isLiveCall } from '@/features/calls/call-presentation';
 import { peopleService } from '@/features/home/people.service';
 import { ApiError } from '@/services/api';
@@ -295,10 +296,30 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
   async function startCall(kind: 'audio' | 'video') {
     if (!header.personId) return;
     try {
-      const created = await chatService.requestCall(header.personId, kind, conversationId);
-      callManager.presentOutgoing({ id: created.id, name: header.name, video: kind === 'video' });
+      const response = await callService.start(header.personId, kind, conversationId);
+      const callData = response.call;
+      callManager.presentOutgoing({
+        id: callData.id,
+        name: header.name,
+        video: kind === 'video',
+        rate: callData.rate,
+        userId: header.personId,
+        media: response.token && response.url ? {
+          callId: callData.id,
+          url: response.url,
+          token: response.token,
+          roomName: callData.roomName,
+        } : undefined,
+      });
       setCallNotice(null);
-      setCalls((current) => current.some((item) => item.id === created.id) ? current : [...current, created]);
+      setCalls((current) => current.some((item) => item.id === callData.id) ? current : [...current, {
+        id: callData.id,
+        callType: callData.callType,
+        status: callData.status,
+        createdAt: new Date().toISOString(),
+        callerId: user?.id ?? '',
+        receiverId: header.personId ?? '',
+      }]);
     } catch (caught) {
       const body = caught instanceof ApiError && caught.body && typeof caught.body === 'object' ? caught.body as { error?: { message?: string } } : null;
       setCallNotice(body?.error?.message || "Couldn't start the call.");

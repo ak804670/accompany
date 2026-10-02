@@ -176,7 +176,7 @@ function IncomingCall() {
     const tick = () => {
       void callService.incoming().then((next) => {
         if (!active) return;
-        if (next) callManager.presentIncoming({ id: next.id, name: 'Incoming call', video: next.callType === 'VIDEO', status: next.status });
+        if (next) callManager.presentIncoming({ id: next.id, name: 'Incoming call', video: next.callType === 'VIDEO', status: next.status, rate: next.rate });
         else if (callManager.getCurrentCall()?.outgoing === false) callManager.syncRemote('ENDED');
       }).catch(() => undefined);
     };

@@ -10,6 +10,7 @@ import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
 import { PersonAvatar } from '@/components/home/PersonAvatar';
 import { callManager } from '@/features/calls/call-manager';
+import { callService } from '@/features/calls/call.service';
 import { chatService, type CallHistoryItem, type ConversationSummary } from '@/features/chat/chat.service';
 import { ApiError } from '@/services/api';
 
@@ -54,8 +55,22 @@ export function CallsTab({ width, query, onOpen }: CallsTabProps) {
       return;
     }
     try {
-      const created = await chatService.requestCall(item.personId, item.callType === 'VIDEO' ? 'video' : 'audio', item.conversationId);
-      callManager.presentOutgoing({ id: created.id, name: item.name, video: item.callType === 'VIDEO' });
+      const kind = item.callType === 'VIDEO' ? 'video' : 'audio';
+      const response = await callService.start(item.personId, kind, item.conversationId);
+      const callData = response.call;
+      callManager.presentOutgoing({
+        id: callData.id,
+        name: item.name,
+        video: kind === 'video',
+        rate: callData.rate,
+        userId: item.personId,
+        media: response.token && response.url ? {
+          callId: callData.id,
+          url: response.url,
+          token: response.token,
+          roomName: callData.roomName,
+        } : undefined,
+      });
       setNotice(null);
       onOpen(summary(item), item.id);
     } catch (caught) {

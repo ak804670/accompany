@@ -12,6 +12,13 @@ export type ActiveCall = {
   phase: CallPhase;
   muted: boolean;
   cameraEnabled: boolean;
+  rate?: number | null;
+  userId?: string | null;
+  speakerOn: boolean;
+  isFrontCamera: boolean;
+  isSpeaking: boolean;
+  remoteCameraEnabled: boolean;
+  startedAt?: number | null;
 };
 
 type Listeners = Set<() => void>;
@@ -54,17 +61,61 @@ export class CallManager {
     return this.media.current();
   }
 
-  presentOutgoing(input: { id: string; name: string; video: boolean; media?: LiveKitSession }): void {
-    this.replace({ id: input.id, name: input.name, video: input.video, outgoing: true, phase: 'RINGING', muted: false, cameraEnabled: input.video });
+  presentOutgoing(input: {
+    id: string;
+    name: string;
+    video: boolean;
+    rate?: number | null;
+    userId?: string | null;
+    media?: LiveKitSession;
+  }): void {
+    this.replace({
+      id: input.id,
+      name: input.name,
+      video: input.video,
+      outgoing: true,
+      phase: 'RINGING',
+      muted: false,
+      cameraEnabled: input.video,
+      rate: input.rate ?? null,
+      userId: input.userId ?? null,
+      speakerOn: input.video,
+      isFrontCamera: true,
+      isSpeaking: false,
+      remoteCameraEnabled: true,
+      startedAt: null,
+    });
     if (input.media) this.media.connect(input.media);
     this.platform.showOutgoing({ id: input.id, name: input.name, video: input.video, outgoing: true });
   }
 
-  presentIncoming(input: { id: string; name: string; video: boolean; status?: string }): void {
+  presentIncoming(input: {
+    id: string;
+    name: string;
+    video: boolean;
+    rate?: number | null;
+    userId?: string | null;
+    status?: string;
+  }): void {
     if (this.current?.id === input.id) return;
     const phase = input.status ? phaseFromStatus(input.status) : 'RINGING';
     if (isTerminal(phase)) return;
-    this.replace({ id: input.id, name: input.name, video: input.video, outgoing: false, phase, muted: false, cameraEnabled: input.video });
+    this.replace({
+      id: input.id,
+      name: input.name,
+      video: input.video,
+      outgoing: false,
+      phase,
+      muted: false,
+      cameraEnabled: input.video,
+      rate: input.rate ?? null,
+      userId: input.userId ?? null,
+      speakerOn: input.video,
+      isFrontCamera: true,
+      isSpeaking: false,
+      remoteCameraEnabled: true,
+      startedAt: null,
+    });
     this.platform.showIncoming({ id: input.id, name: input.name, video: input.video, outgoing: false });
   }
 
@@ -85,7 +136,12 @@ export class CallManager {
     if (result.token && result.url) {
       this.media.connect({ callId, url: result.url, token: result.token, roomName: result.call.roomName });
     }
-    this.replace({ ...call, phase: 'CONNECTED' });
+    this.replace({
+      ...call,
+      phase: 'CONNECTED',
+      startedAt: Date.now(),
+      rate: result.call.rate ?? call.rate,
+    });
     this.platform.showConnected({ id: call.id, name: call.name, video: call.video, outgoing: false });
   }
 
@@ -137,6 +193,26 @@ export class CallManager {
     this.replace({ ...this.current, cameraEnabled: !this.current.cameraEnabled });
   }
 
+  toggleSpeaker(): void {
+    if (!this.current) return;
+    this.replace({ ...this.current, speakerOn: !this.current.speakerOn });
+  }
+
+  flipCamera(): void {
+    if (!this.current) return;
+    this.replace({ ...this.current, isFrontCamera: !this.current.isFrontCamera });
+  }
+
+  setSpeaking(isSpeaking: boolean): void {
+    if (!this.current) return;
+    this.replace({ ...this.current, isSpeaking });
+  }
+
+  setRemoteCameraEnabled(remoteCameraEnabled: boolean): void {
+    if (!this.current) return;
+    this.replace({ ...this.current, remoteCameraEnabled });
+  }
+
   syncRemote(status: string): void {
     if (!this.current) return;
     const phase = phaseFromStatus(status);
@@ -148,7 +224,7 @@ export class CallManager {
       return;
     }
     if (phase === 'CONNECTED' && this.current.phase !== 'CONNECTED') {
-      this.replace({ ...this.current, phase });
+      this.replace({ ...this.current, phase, startedAt: this.current.startedAt ?? Date.now() });
       this.platform.showConnected(this.current);
     }
   }

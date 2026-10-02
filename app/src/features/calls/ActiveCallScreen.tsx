@@ -1,14 +1,13 @@
-import { PhoneOff, VideoOff } from 'lucide-react-native';
-import type { ReactNode } from 'react';
-import { useSyncExternalStore } from 'react';
-import { Pressable, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { View } from 'react-native';
 
-import { AppText } from '@/components/design-system/AppText';
-import { BrandIcon } from '@/components/icons/BrandIcon';
-import { Icon } from '@/components/ui/icon';
-import { PersonAvatar } from '@/components/home/PersonAvatar';
+import { AudioCallView } from '@/features/calls/components/AudioCallView';
+import { CallControls } from '@/features/calls/components/CallControls';
+import { CallHeader } from '@/features/calls/components/CallHeader';
+import { RingingView } from '@/features/calls/components/RingingView';
+import { VideoCallView } from '@/features/calls/components/VideoCallView';
 import { callManager, type ActiveCall } from '@/features/calls/call-manager';
+
 function useActiveCall(): ActiveCall | null {
   return useSyncExternalStore(
     (listener) => callManager.subscribe(listener),
@@ -18,48 +17,99 @@ function useActiveCall(): ActiveCall | null {
 
 export function ActiveCallScreen() {
   const call = useActiveCall();
-  const insets = useSafeAreaInsets();
-  if (!call || call.phase === 'ENDED' || call.phase === 'REJECTED' || call.phase === 'MISSED' || call.phase === 'FAILED' || call.phase === 'IDLE') {
+  const [duration, setDuration] = useState(0);
+  const [showControls, setShowControls] = useState(true);
+
+  useEffect(() => {
+    if (!call?.startedAt || call.phase !== 'CONNECTED') {
+      setDuration(0);
+      return;
+    }
+    const started = call.startedAt;
+    const update = () => {
+      setDuration(Math.max(0, Math.floor((Date.now() - started) / 1000)));
+    };
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [call?.phase, call?.startedAt]);
+
+  if (
+    !call ||
+    call.phase === 'ENDED' ||
+    call.phase === 'REJECTED' ||
+    call.phase === 'MISSED' ||
+    call.phase === 'FAILED' ||
+    call.phase === 'IDLE'
+  ) {
     return null;
   }
-  const status = call.phase === 'CONNECTED' ? 'Connected' : call.phase === 'CONNECTING' ? 'Connecting' : call.phase === 'ENDING' ? 'Ending' : 'Ringing';
-  const medium = call.video ? 'Video call' : 'Voice call';
-  return (
-    <View className={call.video ? 'absolute inset-0 bg-foreground' : 'absolute inset-0 bg-background'} style={{ paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }}>
-      <View className="flex-1 items-center justify-center gap-md px-lg">
-        {call.video ? (
-          <View className="w-full flex-1 items-center justify-center rounded-md bg-foreground">
-            {call.cameraEnabled ? <BrandIcon name="video-call" size={32} /> : <Icon as={VideoOff} className="size-8 text-background" />}
-          </View>
-        ) : (
-          <PersonAvatar name={call.name} size={120} />
-        )}
-        <AppText variant="h2" className={call.video ? 'text-background' : undefined}>{call.name}</AppText>
-        <AppText variant="bodyM" className={call.video ? 'text-background' : undefined} tone={call.video ? 'default' : 'muted'}>{medium} · {status}</AppText>
-      </View>
-      <View className="flex-row items-center justify-center gap-lg px-lg">
-        <RoundAction label={call.muted ? 'Unmute' : 'Mute'} icon={<BrandIcon name={call.muted ? 'mic-off' : 'mic'} size={24} />} onPress={() => callManager.mute(!call.muted)} light={call.video} />
-        {call.video ? <RoundAction label={call.cameraEnabled ? 'Turn camera off' : 'Turn camera on'} icon={call.cameraEnabled ? <BrandIcon name="video-call" size={24} /> : <Icon as={VideoOff} className="size-6 text-foreground" />} onPress={() => callManager.toggleCamera()} light /> : null}
-        {call.phase === 'RINGING' && !call.outgoing ? (
-          <RoundAction label="Decline" icon={<Icon as={PhoneOff} className="size-6 text-white" />} danger onPress={() => void callManager.rejectCall(call.id)} />
-        ) : null}
-        {call.phase === 'RINGING' && !call.outgoing ? (
-          <RoundAction label="Accept" icon={<BrandIcon name="call" size={24} />} onPress={() => void callManager.answerCall(call.id)} />
-        ) : (
-          <RoundAction label={call.outgoing && call.phase === 'RINGING' ? 'Cancel' : 'End call'} icon={<Icon as={PhoneOff} className="size-6 text-white" />} danger onPress={() => void callManager.endCall(call.id)} />
-        )}
-      </View>
-    </View>
-  );
-}
 
-function RoundAction({ label, icon, onPress, danger = false, light = false }: { label: string; icon: ReactNode; onPress: () => void; danger?: boolean; light?: boolean }) {
+  const isRinging = call.phase === 'RINGING';
+
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} className="items-center gap-xs">
-      <View className={danger ? 'h-16 w-16 items-center justify-center rounded-full bg-destructive' : light ? 'h-16 w-16 items-center justify-center rounded-full bg-background' : 'h-16 w-16 items-center justify-center rounded-full bg-muted'}>
-        {icon}
-      </View>
-      <AppText variant="caption" className={light ? 'text-background' : undefined}>{label}</AppText>
-    </Pressable>
+    <View className="absolute inset-0 z-50 bg-zinc-950">
+      {/* Ringing Screen */}
+      {isRinging ? (
+        <RingingView
+          name={call.name}
+          userId={call.userId}
+          video={call.video}
+          outgoing={call.outgoing}
+          rate={call.rate}
+          onAnswer={() => void callManager.answerCall(call.id)}
+          onReject={() =>
+            void (call.outgoing ? callManager.endCall(call.id) : callManager.rejectCall(call.id))
+          }
+        />
+      ) : (
+        <>
+          {/* Top Header with companion name, timer, and coin rate */}
+          {showControls ? (
+            <CallHeader
+              name={call.name}
+              status={call.phase}
+              durationSeconds={duration}
+              rate={call.rate}
+              video={call.video}
+            />
+          ) : null}
+
+          {/* Main Stage: Video stream vs Audio centered avatar */}
+          {call.video ? (
+            <VideoCallView
+              name={call.name}
+              userId={call.userId}
+              cameraEnabled={call.cameraEnabled}
+              remoteCameraEnabled={call.remoteCameraEnabled}
+              isFrontCamera={call.isFrontCamera}
+              onFlipCamera={() => callManager.flipCamera()}
+              onToggleOverlay={() => setShowControls((prev) => !prev)}
+            />
+          ) : (
+            <AudioCallView
+              name={call.name}
+              userId={call.userId}
+              isSpeaking={call.isSpeaking}
+            />
+          )}
+
+          {/* Bottom Floating Control Dock */}
+          {showControls ? (
+            <CallControls
+              video={call.video}
+              muted={call.muted}
+              cameraEnabled={call.cameraEnabled}
+              speakerOn={call.speakerOn}
+              onToggleMute={() => callManager.mute(!call.muted)}
+              onToggleCamera={() => callManager.toggleCamera()}
+              onFlipCamera={() => callManager.flipCamera()}
+              onToggleSpeaker={() => callManager.toggleSpeaker()}
+              onEndCall={() => void callManager.endCall(call.id)}
+            />
+          ) : null}
+        </>
+      )}
+    </View>
   );
 }

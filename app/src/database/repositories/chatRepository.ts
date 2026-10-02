@@ -166,6 +166,23 @@ export const chatRepository = {
     }
   },
 
+  async updatePresence(ownerUserId: string, personId: string, online: boolean): Promise<void> {
+    try {
+      const db = await openDatabase();
+      await db.run(
+        'UPDATE conversations SET online = ? WHERE owner_user_id = ? AND person_id = ?',
+        [online ? 1 : 0, ownerUserId, personId],
+      );
+      for (const [convKey, conv] of conversations.entries()) {
+        if (convKey.startsWith(`${ownerUserId}:`) && conv.personId === personId) {
+          conversations.set(convKey, { ...conv, online });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  },
+
   async saveOne(ownerUserId: string, conversation: StoredConversation): Promise<void> {
     await upsert(ownerUserId, conversation);
   },

@@ -1,6 +1,6 @@
-import { render, screen, userEvent } from '@testing-library/react-native';
+import { cleanup, render, screen, userEvent } from '@testing-library/react-native';
 
-import { resetSessionCache } from '@/database/session-cache';
+import { wipeUserCache } from '@/database/session-cache';
 import { ProfileProvider } from '@/features/profile/ProfileProvider';
 import { profileService } from '@/features/profile/services/profile.service';
 import type { UserProfile } from '@/features/profile/types';
@@ -82,9 +82,14 @@ function renderGate() {
 }
 
 describe('profile onboarding', () => {
-  beforeEach(() => {
-    resetSessionCache();
+  beforeEach(async () => {
+    cleanup();
+    await wipeUserCache('user-1');
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it('opens onboarding when the profile is incomplete', async () => {
@@ -119,12 +124,13 @@ describe('profile onboarding', () => {
     expect(service.saveInterests).toHaveBeenCalledWith([mockInterestId], []);
 
     first.unmount();
-    resetSessionCache();
+    await wipeUserCache('user-1');
     service.get.mockResolvedValue(profile({ step: 'photo' }));
     service.uploadPhoto.mockRejectedValue(new Error('upload failed'));
-    await renderGate();
+    const second = await renderGate();
     await userEvent.press(await screen.findByRole('button', { name: 'Add photo' }));
     expect(await screen.findByText("We couldn't add that photo. Try another one.")).toBeOnTheScreen();
+    second.unmount();
   });
 
   it('resumes the saved step and completes the profile', async () => {
