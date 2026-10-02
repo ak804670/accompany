@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, View } from 'react-native';
+import { Alert, FlatList, Keyboard, KeyboardAvoidingView, Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CallEventRow } from '@/components/chat/CallEventRow';
@@ -33,6 +33,7 @@ import { groupTimeline, isLiveCall } from '@/features/calls/call-presentation';
 import { peopleService } from '@/features/home/people.service';
 import { ApiError } from '@/services/api';
 import { socketService, type LiveMessage } from '@/services/realtime/socket';
+import { getGiphyDialog, getGiphyMessageUrl, giphyMessageBody } from '@/features/chat/giphy';
 
 type ChatScreenProps = {
   conversationId: string;
@@ -47,6 +48,7 @@ type ChatScreenProps = {
 export function ChatScreen({ conversationId, name, personId, online, highlightCallId, onBack, onViewProfile }: ChatScreenProps) {
   const insets = useSafeAreaInsets();
   const { user } = useSession();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const cachedMessages = user?.id ? messageRepository.peek(user.id, conversationId) : null;
   const cachedConversation = user?.id ? chatRepository.peek(user.id, conversationId) : null;
   const hasInitialCache = Boolean(cachedConversation) || (cachedMessages?.length ?? 0) > 0;
@@ -97,6 +99,17 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
   const loadingOlder = useRef(false);
   const loadGeneration = useRef(0);
   const listRef = useRef<FlatList<(ReturnType<typeof groupTimeline<ChatMessage>>)[number]>>(null);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSubscription = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSubscription = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   async function loadOlder(next: string | null) {
     if (user?.id && messages.length > 0) {
@@ -303,8 +316,8 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
     refreshDiscovery();
   }
 
-  async function send() {
-    const body = draft.trim();
+  const sendBody = useCallback(async (rawBody: string) => {
+    const body = rawBody.trim();
     if (!body || sending) return;
     const pendingId = globalThis.crypto?.randomUUID?.() ?? `pending-${Date.now()}`;
     const pending: ChatMessage = {
@@ -345,13 +358,49 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
     } catch {
       if (user?.id) await messageRepository.remove(user.id, conversationId, pendingId);
       setMessages((current) => current.filter((item) => item.id !== pendingId));
-      setDraft(body);
+      if (!getGiphyMessageUrl(body)) setDraft(body);
       setFreshId(null);
       setSendError(true);
     } finally {
       setSending(false);
     }
+  }, [conversationId, sending, user]);
+
+  async function send() {
+    await sendBody(draft);
   }
+
+  async function openGifPicker() {
+    Keyboard.dismiss();
+    try {
+      const picker = await getGiphyDialog();
+      if (!picker) {
+        Alert.alert('GIPHY setup needed', 'Add the Android and iOS GIPHY SDK keys to app/.env, then restart the development build.');
+        return;
+      }
+      picker.dialog.show();
+    } catch {
+      Alert.alert('GIPHY unavailable', 'Rebuild and open the app with the Accompany development client to use GIFs.');
+    }
+  }
+
+  useEffect(() => {
+    let active = true;
+    let subscription: { remove: () => void } | undefined;
+    void getGiphyDialog().then((picker) => {
+      if (!active || !picker) return;
+      subscription = picker.dialog.addListener(picker.mediaSelectedEvent, ({ media }) => {
+        picker.dialog.hide();
+        const mediaData = media.data as { images?: { original?: { url?: string }; fixed_width?: { url?: string } } };
+        const url = mediaData.images?.original?.url ?? mediaData.images?.fixed_width?.url;
+        if (url) void sendBody(giphyMessageBody(url));
+      });
+    }).catch(() => undefined);
+    return () => {
+      active = false;
+      subscription?.remove();
+    };
+  }, [sendBody]);
 
   const rows = useMemo(() => groupTimeline([
     ...messages.map((message) => ({ kind: 'message' as const, id: message.id, at: message.createdAt, message })),
@@ -370,7 +419,11 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
   }, [highlightCallId, rows]);
 
   return (
-    <KeyboardAvoidingView className="flex-1 bg-background" behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, paddingBottom: insets.bottom + 8 }}>
+    <KeyboardAvoidingView
+      className="flex-1 bg-background"
+      behavior="padding"
+      style={{ flex: 1 }}
+    >
       <ChatHeader
         name={header.name}
         personId={header.personId}
@@ -514,7 +567,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
       ) : panels.footer === 'composer' ? (
         <View>
           {otherTyping ? <AppText className="px-md pb-xs" variant="caption" tone="muted">{header.name} is typing</AppText> : null}
-          <MessageComposer value={draft} sending={sending} failed={sendError} onChange={(value) => { setDraft(value); socketService.typing(conversationId, value.trim().length > 0); }} onSend={() => void send()} />
+          <MessageComposer value={draft} sending={sending} failed={sendError} onChange={(value) => { setDraft(value); socketService.typing(conversationId, value.trim().length > 0); }} onSend={() => void send()} onOpenMediaPicker={() => void openGifPicker()} />
         </View>
       ) : panels.footer === 'pending' ? (
         <View className="mx-md items-center gap-xs rounded-sm bg-muted p-md">
@@ -545,6 +598,14 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
           <AppButton className="flex-1" onPress={() => void (confirm === 'unblock' ? unblockPerson() : blockPerson())}>{confirm === 'unblock' ? 'Unblock' : 'Block'}</AppButton>
         </View>
       </AppDialog>
+      <View
+        pointerEvents="none"
+        style={{
+          height: keyboardVisible
+            ? 2
+            : Math.max(insets.bottom, Platform.OS === 'android' ? 1 : 0),
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }

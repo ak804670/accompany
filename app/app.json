@@ -22,6 +22,7 @@
     },
     "android": {
       "package": "com.datingmarketplace.app",
+      "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "android.permission.MANAGE_OWN_CALLS",
         "android.permission.FOREGROUND_SERVICE",
@@ -49,6 +50,7 @@
       ],
       "expo-font",
       "expo-secure-store",
+      "@giphy/react-native-sdk",
       [
         "expo-location",
         {

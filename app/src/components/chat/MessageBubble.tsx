@@ -1,9 +1,24 @@
-import { View } from 'react-native';
+import { Image, View } from 'react-native';
 import Animated, { FadeInUp, ReduceMotion } from 'react-native-reanimated';
 
 import { AppText } from '@/components/design-system/AppText';
+import { getGiphyMessageUrl } from '@/features/chat/giphy';
 
 export function MessageBubble({ body, mine, appear }: { body: string; mine: boolean; appear?: boolean }) {
+  const gifUrl = getGiphyMessageUrl(body);
+  if (gifUrl) {
+    const gif = (
+      <Image
+        source={{ uri: gifUrl }}
+        accessibilityLabel="GIF message"
+        resizeMode="cover"
+        style={{ width: 232, height: 174, borderRadius: 18, marginVertical: 3, alignSelf: mine ? 'flex-end' : 'flex-start' }}
+      />
+    );
+    if (!appear) return gif;
+    return <Animated.View entering={FadeInUp.duration(240).reduceMotion(ReduceMotion.System)}>{gif}</Animated.View>;
+  }
+
   const bubble = (
     <View
       className={mine ? 'bg-primary' : 'bg-muted'}

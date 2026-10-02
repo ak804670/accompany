@@ -5,6 +5,7 @@ import { AppText } from '@/components/design-system/AppText';
 import { OnlineStatus } from '@/components/home/OnlineStatus';
 import { PersonAvatar } from '@/components/home/PersonAvatar';
 import type { ConversationSummary } from '@/features/chat/chat.service';
+import { getGiphyMessageUrl } from '@/features/chat/giphy';
 
 function when(value: string | null): string {
   if (!value) return '';
@@ -25,7 +26,7 @@ export function ChatListItem({ item, onPress }: { item: ConversationSummary; onP
         </View>
         <View className="flex-row items-center justify-between gap-sm">
           <AppText variant="bodyS" tone={item.unreadCount > 0 ? 'default' : 'muted'} numberOfLines={1} className="flex-1">
-            {item.preview ?? 'Say hello'}
+            {item.preview == null ? 'Say hello' : getGiphyMessageUrl(item.preview) ? 'GIF' : item.preview}
           </AppText>
           <UnreadBadge count={item.unreadCount} />
         </View>

@@ -6,7 +6,7 @@ React Native app for Accompany, a companionship platform for conversation and go
 
 - Node.js 20 or newer
 - npm
-- [Expo Go](https://expo.dev/go) on a device, or an Android emulator
+- An Android emulator or device; GIPHY's native picker requires the Accompany development client, not Expo Go
 - Xcode and an iOS Simulator to run iOS (macOS only)
 
 ## Installation
@@ -24,7 +24,7 @@ cp .env.example .env
 npm start
 ```
 
-Then press `a` for Android or `i` for iOS, or scan the QR code with Expo Go.
+Build and install the native development client once with `npm run android` or `npm run ios`. Then `npm start` opens the app in that client. `npm run start:go` is available for screens that do not use native-only modules; GIPHY is unavailable in Expo Go.
 
 ### iOS
 
@@ -55,11 +55,15 @@ npm test
 
 Copy `.env.example` to `.env`.
 
+Add platform-specific GIPHY SDK keys to `.env` before using the GIF picker. GIPHY requires separate Android and iOS SDK keys. Rebuild the native development client after installing native packages or changing native app configuration.
+
 | Variable                   | Values                                    |
 | -------------------------- | ----------------------------------------- |
 | `EXPO_PUBLIC_APP_ENV`      | `development`, `staging`, or `production` |
 | `EXPO_PUBLIC_API_BASE_URL` | API origin                                |
 | `EXPO_PUBLIC_WS_BASE_URL`  | WebSocket origin                          |
+| `EXPO_PUBLIC_GIPHY_ANDROID_SDK_KEY` | GIPHY Android SDK key |
+| `EXPO_PUBLIC_GIPHY_IOS_SDK_KEY`     | GIPHY iOS SDK key |
 
 Read these through `src/services/env.ts`. Do not hardcode URLs in screens.
 
