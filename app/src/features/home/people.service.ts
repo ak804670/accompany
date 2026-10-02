@@ -59,7 +59,7 @@ export const peopleService = {
       ...result,
       people: result.people.map((person) => ({
         ...person,
-        online: true,
+        online: Boolean(person.online),
       })),
     };
   },

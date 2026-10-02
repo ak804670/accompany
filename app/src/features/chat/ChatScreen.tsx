@@ -32,7 +32,7 @@ import { callManager } from '@/features/calls/call-manager';
 import { groupTimeline, isLiveCall } from '@/features/calls/call-presentation';
 import { peopleService } from '@/features/home/people.service';
 import { ApiError } from '@/services/api';
-import { socketService, type LiveMessage } from '@/services/realtime/socket';
+import { ChatEvents, socketService, type LiveMessage } from '@/services/realtime/socket';
 import { getGiphyDialog, getGiphyMessageUrl, giphyMessageBody } from '@/features/chat/giphy';
 
 type ChatScreenProps = {
@@ -246,13 +246,24 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
       const body = payload as { conversationId?: string };
       if (body.conversationId === conversationId) setOtherTyping(false);
     });
+    const offPresence = socketService.subscribe(ChatEvents.presenceUpdate, (payload) => {
+      const data = payload as { userId?: string; status?: 'ONLINE' | 'OFFLINE' };
+      if (data?.userId === header.personId && (data.status === 'ONLINE' || data.status === 'OFFLINE')) {
+        const isOnline = data.status === 'ONLINE';
+        setHeader((prev) => ({ ...prev, online: isOnline }));
+        if (user?.id && data.userId) {
+          void chatRepository.updatePresence(user.id, data.userId, isOnline).catch(() => undefined);
+        }
+      }
+    });
     return () => {
       offNew();
       offTyping();
       offStop();
+      offPresence();
       socketService.leave(conversationId);
     };
-  }, [conversationId, user?.id]);
+  }, [conversationId, header.personId, user?.id]);
 
   useEffect(() => {
     if (phase !== 'ready' || !header.personId) return;

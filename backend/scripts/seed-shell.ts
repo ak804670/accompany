@@ -67,9 +67,13 @@ try {
                deleted_at = NULL`,
         [person.id, person.name, person.birth, person.bio],
       );
+      const isOnline = people.indexOf(person) < 2;
+      const lastSeenSql = isOnline
+        ? "NOW() + INTERVAL '10 minutes'"
+        : "NOW() - INTERVAL '2 hours'";
       await client.query(
-        `INSERT INTO acc.presence (user_id, last_seen_at) VALUES ($1, NOW() + INTERVAL '30 days')
-         ON CONFLICT (user_id) DO UPDATE SET last_seen_at = NOW() + INTERVAL '30 days'`,
+        `INSERT INTO acc.presence (user_id, last_seen_at) VALUES ($1, ${lastSeenSql})
+         ON CONFLICT (user_id) DO UPDATE SET last_seen_at = ${lastSeenSql}`,
         [person.id],
       );
     }

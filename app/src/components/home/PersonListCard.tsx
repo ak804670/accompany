@@ -13,7 +13,7 @@ type PersonListCardProps = {
 export function PersonListCard({ person, onPress }: PersonListCardProps) {
   const distance = formatDistance(person.distanceKm);
   const interests = person.sharedInterests.length > 0 ? person.sharedInterests : person.interests;
-  const isOnline = person.online !== false;
+  const isOnline = Boolean(person.online);
   const subtitle = [
     person.age ? `${person.age} yrs` : null,
     distance ?? null,

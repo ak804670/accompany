@@ -145,10 +145,18 @@ async function markDelivered(pool: Pool, messageId: string): Promise<string> {
   return new Date(result.rows[0]?.delivered_at ?? new Date()).toISOString();
 }
 
-async function touchLastSeen(pool: Pool, userId: string): Promise<void> {
+async function markOnline(pool: Pool, userId: string): Promise<void> {
   await pool.query(
-    `UPDATE acc.presence SET last_seen_at = NOW()
-     WHERE user_id = $1 AND last_seen_at < NOW() - INTERVAL '30 seconds'`,
+    `INSERT INTO acc.presence (user_id, last_seen_at) VALUES ($1, NOW())
+     ON CONFLICT (user_id) DO UPDATE SET last_seen_at = NOW()`,
+    [userId],
+  );
+}
+
+async function markOffline(pool: Pool, userId: string): Promise<void> {
+  await pool.query(
+    `UPDATE acc.presence SET last_seen_at = NOW() - INTERVAL '1 minute'
+     WHERE user_id = $1`,
     [userId],
   );
 }
@@ -183,14 +191,17 @@ export function attachChatSocket(server: HttpServer, deps: ChatSocketDeps): Serv
     socket.join(userRoom(userId));
     const became = track(userId, socket.id);
     logger.info('socket connected', { socketId: socket.id, userId });
-    if (became) io?.emit(ChatEvents.presenceUpdate, { userId, status: became });
+    if (became) {
+      io?.emit(ChatEvents.presenceUpdate, { userId, status: became });
+      void markOnline(deps.pool, userId).catch(() => undefined);
+    }
 
     socket.on('disconnect', () => {
       const offline = untrack(userId, socket.id);
       logger.info('socket disconnected', { socketId: socket.id, userId });
       if (offline) {
         io?.emit(ChatEvents.presenceUpdate, { userId, status: offline });
-        void touchLastSeen(deps.pool, userId).catch(() => undefined);
+        void markOffline(deps.pool, userId).catch(() => undefined);
       }
     });
 
