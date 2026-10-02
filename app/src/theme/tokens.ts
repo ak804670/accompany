@@ -37,6 +37,19 @@ export const palette = {
   },
 } as const;
 
+export const navGradients = {
+  light: {
+    default: ['#FCD2E2', '#FDE4ED', '#FFF2F6'] as const,
+    subtle: ['#FDE4ED', '#FFF0F5', '#FFF8FA'] as const,
+    vibrant: ['#F06091', '#E04880', '#C7377A'] as const,
+  },
+  dark: {
+    default: ['#381427', '#2A1220', '#1C1118'] as const,
+    subtle: ['#28121E', '#1F1119', '#161014'] as const,
+    vibrant: ['#4A1A33', '#331323', '#200D17'] as const,
+  },
+} as const;
+
 export type ColorScheme = keyof typeof palette;
 
 /** 4-based spacing. Prefer space over filling the screen. */

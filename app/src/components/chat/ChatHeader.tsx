@@ -6,6 +6,7 @@ import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
 import { OnlineStatus } from '@/components/home/OnlineStatus';
 import { PersonAvatar } from '@/components/home/PersonAvatar';
+import { NavBarGradient } from '@/components/navigation/NavBarGradient';
 
 type ChatHeaderProps = {
   name: string;
@@ -20,9 +21,10 @@ export function ChatHeader({ name, personId, online, onBack, actions }: ChatHead
 
   return (
     <View
-      className="flex-row items-center gap-sm border-b border-nav-border bg-nav px-sm pb-2"
+      className="relative overflow-hidden flex-row items-center gap-sm border-b border-nav-border px-sm pb-2"
       style={{ paddingTop: insets.top + 8 }}
     >
+      <NavBarGradient />
       <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
       <PersonAvatar userId={personId} name={name} size={40} />
       <View className="flex-1">

@@ -113,12 +113,12 @@ describe('profile onboarding', () => {
     const mockInterestId = '11111111-1111-4111-8111-111111111111';
     service.interests.mockResolvedValue([{ id: mockInterestId, name: 'Music', slug: 'music' }]);
     service.saveInterests.mockResolvedValue(profile({ step: 'preferences', interests: [{ id: mockInterestId, name: 'Music', slug: 'music' }] }));
-    await renderGate();
+    const first = await renderGate();
     await userEvent.press(await screen.findByRole('button', { name: 'Music' }));
     await userEvent.press(screen.getByRole('button', { name: 'Continue' }));
     expect(service.saveInterests).toHaveBeenCalledWith([mockInterestId], []);
 
-    await first.unmount();
+    first.unmount();
     resetSessionCache();
     service.get.mockResolvedValue(profile({ step: 'photo' }));
     service.uploadPhoto.mockRejectedValue(new Error('upload failed'));

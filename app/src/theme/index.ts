@@ -3,6 +3,7 @@ export { NAV_THEME } from '@/theme/navigation';
 export { ThemeProvider, useTheme, type ThemePreference } from '@/theme/ThemeProvider';
 export {
   fontFamily,
+  navGradients,
   palette,
   photography,
   radius,

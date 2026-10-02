@@ -6,6 +6,7 @@ import { ChatListItem } from '@/components/chat/ChatListItem';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
 import { BrandIcon } from '@/components/icons/BrandIcon';
+import { NavBarGradient } from '@/components/navigation/NavBarGradient';
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { illustrationForError, type IllustrationName } from '@/assets/illustrations/illustrationRegistry';
 import { chatRepository } from '@/database/repositories/chatRepository';
@@ -109,9 +110,10 @@ export function ChatsScreen({ onOpen }: ChatsScreenProps) {
     <View className="flex-1 bg-background">
       {/* Top Header Nav Bar */}
       <View
-        className="border-b border-nav-border bg-nav px-lg pb-3"
+        className="relative overflow-hidden border-b border-nav-border px-lg pb-3"
         style={{ paddingTop: insets.top + 8 }}
       >
+        <NavBarGradient />
         <AppText variant="h2">Chats</AppText>
       </View>
       <View className="flex-1 px-lg">

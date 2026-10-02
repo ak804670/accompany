@@ -35,9 +35,9 @@ function resolveUrl(baseUrl: string, path: string): string {
     return path;
   }
 
-  const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
-  const relative = path.startsWith('/') ? path.slice(1) : path;
-  return new URL(relative, base).toString();
+  const base = baseUrl.replace(/\/+$/, '');
+  const relative = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${relative}`;
 }
 
 function parseBody(text: string): unknown {

@@ -11,7 +11,7 @@ import { palette, useTheme } from '@/theme';
 export type AppButtonVariant =
   'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'success' | 'link' | 'icon';
 
-export type AppButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'full';
+export type AppButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'full' | 'icon';
 
 export type AppButtonProps = Omit<
   ComponentProps<typeof Button>,
@@ -56,6 +56,8 @@ function mapSize(size: AppButtonSize, variant: AppButtonVariant) {
   }
 
   switch (size) {
+    case 'icon':
+      return { size: 'icon' as const, className: 'h-10 w-10' };
     case 'xs':
       return { size: 'sm' as const, className: 'h-8 px-2' };
     case 'sm':

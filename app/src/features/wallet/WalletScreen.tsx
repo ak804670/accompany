@@ -7,6 +7,7 @@ import { AppButton } from '@/components/design-system/AppButton';
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
 import { BrandIcon } from '@/components/icons/BrandIcon';
+import { NavBarGradient } from '@/components/navigation/NavBarGradient';
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { coinRepository } from '@/database/repositories/coinRepository';
 import { syncWallet } from '@/database/session-cache';
@@ -72,9 +73,10 @@ export function WalletScreen({ onBack, onAdd, onWithdraw }: WalletScreenProps) {
     <View className="flex-1 bg-background">
       {/* Top Header Nav Bar */}
       <View
-        className="border-b border-nav-border bg-nav px-sm pb-2"
+        className="relative overflow-hidden border-b border-nav-border px-sm pb-2"
         style={{ paddingTop: insets.top + 8 }}
       >
+        <NavBarGradient />
         <View className="flex-row items-center gap-xs">
           <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
           <AppText variant="h3">Wallet</AppText>

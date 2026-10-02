@@ -36,7 +36,7 @@ export function MessageComposer({ value, sending, failed, disabled = false, onCh
           accessibilityLabel="Type a message"
           className="min-h-11 max-h-28 min-w-0 flex-1 rounded-2xl border border-input bg-background px-4 py-3 text-foreground"
         />
-        <AppButton accessibilityLabel="Send" variant="primary" size="icon" className="h-10 w-10 shrink-0 rounded-full" loading={sending} disabled={disabled || !value.trim()} onPress={onSend}>
+        <AppButton accessibilityLabel="Send" variant="primary" size="md" className="h-10 w-10 shrink-0 rounded-full" loading={sending} disabled={disabled || !value.trim()} onPress={onSend}>
           <Icon as={Send} className="size-4 text-primary-foreground" />
         </AppButton>
       </View>

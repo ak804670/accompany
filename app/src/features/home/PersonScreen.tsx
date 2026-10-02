@@ -6,6 +6,7 @@ import { AppButton } from '@/components/design-system/AppButton';
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
 import { BrandIcon } from '@/components/icons/BrandIcon';
+import { NavBarGradient } from '@/components/navigation/NavBarGradient';
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
 import { illustrationForError } from '@/assets/illustrations/illustrationRegistry';
 import { OnlineStatus } from '@/components/home/OnlineStatus';
@@ -93,9 +94,10 @@ export function PersonScreen({ userId, onBack, onConversation }: PersonScreenPro
     <View className="flex-1 bg-background" style={{ paddingBottom: insets.bottom + 16 }}>
       {/* Top Header Nav Bar */}
       <View
-        className="border-b border-nav-border bg-nav px-sm pb-2"
+        className="relative overflow-hidden border-b border-nav-border px-sm pb-2"
         style={{ paddingTop: insets.top + 8 }}
       >
+        <NavBarGradient />
         <View className="flex-row items-center gap-xs">
           <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
           {person ? <AppText variant="h3">{person.name}</AppText> : null}

@@ -7,6 +7,7 @@ import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
 import { BrandLogo } from '@/components/design-system/BrandLogo';
 import { BrandIcon } from '@/components/icons/BrandIcon';
+import { NavBarGradient } from '@/components/navigation/NavBarGradient';
 import { Text } from '@/components/ui/text';
 import { DiscoveryDeck } from '@/components/home/DiscoveryDeck';
 import { PersonListView } from '@/components/home/PersonListView';
@@ -76,9 +77,10 @@ export function HomeScreen({ onOpenPerson, onOpenWallet }: HomeScreenProps) {
     <View className="flex-1 bg-background">
       {/* Top Header Nav Bar with Company Logo & Coins Count */}
       <View
-        className="border-b border-nav-border bg-nav px-lg pb-3"
+        className="relative overflow-hidden border-b border-nav-border px-lg pb-3"
         style={{ paddingTop: insets.top + 8 }}
       >
+        <NavBarGradient />
         <View className="flex-row items-center justify-between">
           <BrandLogo size="sm" />
           <Pressable

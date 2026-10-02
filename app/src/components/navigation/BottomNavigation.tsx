@@ -5,6 +5,7 @@ import type { BrandIconName } from '@/assets/icons/registry';
 import { UnreadBadge } from '@/components/chat/UnreadBadge';
 import { AppText } from '@/components/design-system/AppText';
 import { BrandIcon } from '@/components/icons/BrandIcon';
+import { NavBarGradient } from '@/components/navigation/NavBarGradient';
 
 export type MainTab = 'home' | 'chats' | 'profile';
 
@@ -25,9 +26,10 @@ export function BottomNavigation({ value, unread, onChange }: BottomNavigationPr
 
   return (
     <View
-      className="flex-row border-t border-nav-border bg-nav px-sm pt-xs"
+      className="relative overflow-hidden flex-row border-t border-nav-border px-sm pt-xs"
       style={{ paddingBottom: Math.max(insets.bottom, 8) }}
     >
+      <NavBarGradient />
       {items.map((item) => {
         const active = value === item.id;
         return (

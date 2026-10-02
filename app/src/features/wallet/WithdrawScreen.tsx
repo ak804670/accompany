@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
+import { NavBarGradient } from '@/components/navigation/NavBarGradient';
 import { AccompanyIllustration } from '@/components/illustrations/AccompanyIllustration';
 import { syncWallet } from '@/database/session-cache';
 import { useSession } from '@/features/auth';
@@ -40,9 +41,10 @@ export function WithdrawScreen({ onBack }: { onBack: () => void }) {
     <View className="flex-1 bg-background">
       {/* Top Header Nav Bar */}
       <View
-        className="border-b border-nav-border bg-nav px-sm pb-2"
+        className="relative overflow-hidden border-b border-nav-border px-sm pb-2"
         style={{ paddingTop: insets.top + 8 }}
       >
+        <NavBarGradient />
         <View className="flex-row items-center gap-xs">
           <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
           <AppText variant="h3">Withdraw</AppText>

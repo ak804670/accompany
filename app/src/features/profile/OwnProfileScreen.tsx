@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
 import { BrandIcon } from '@/components/icons/BrandIcon';
+import { NavBarGradient } from '@/components/navigation/NavBarGradient';
 import { Text } from '@/components/ui/text';
 import { PersonAvatar } from '@/components/home/PersonAvatar';
 import { ProfileSection } from '@/components/profile/ProfileSection';
@@ -60,9 +61,10 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
     <View className="flex-1 bg-background">
       {/* Top Header Nav Bar */}
       <View
-        className="border-b border-nav-border bg-nav px-lg pb-3"
+        className="relative overflow-hidden border-b border-nav-border px-lg pb-3"
         style={{ paddingTop: insets.top + 8 }}
       >
+        <NavBarGradient />
         <AppText variant="h2">Profile</AppText>
       </View>
       <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-lg px-lg py-md pb-xl">

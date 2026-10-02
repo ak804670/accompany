@@ -11,6 +11,8 @@
     "ios": "expo run:ios",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "build:android": "cd android && ./gradlew assembleRelease",
+    "build:android:clean": "cd android && ./gradlew clean assembleRelease",
     "format": "prettier --write .",
     "test": "jest"
   },

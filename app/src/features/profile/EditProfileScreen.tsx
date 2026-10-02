@@ -6,6 +6,7 @@ import { AppButton } from '@/components/design-system/AppButton';
 import { AppDialog } from '@/components/design-system/AppDialog';
 import { AppIconButton } from '@/components/design-system/AppIconButton';
 import { AppText } from '@/components/design-system/AppText';
+import { NavBarGradient } from '@/components/navigation/NavBarGradient';
 import { ProfileForm } from '@/features/profile/ProfileForm';
 import { profileIsDirty, setProfileDirty } from '@/features/profile/profile-guard';
 
@@ -25,9 +26,10 @@ export function EditProfileScreen({ onBack }: { onBack: () => void }) {
     <View className="flex-1 bg-background">
       {/* Top Header Nav Bar */}
       <View
-        className="border-b border-nav-border bg-nav px-sm pb-2"
+        className="relative overflow-hidden border-b border-nav-border px-sm pb-2"
         style={{ paddingTop: insets.top + 8 }}
       >
+        <NavBarGradient />
         <View className="flex-row items-center gap-xs">
           <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={back} />
           <AppText variant="h3">Edit profile</AppText>
