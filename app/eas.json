@@ -1,0 +1,29 @@
+{
+  "cli": {
+    "version": ">= 12.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "staging",
+        "EXPO_PUBLIC_API_BASE_URL": "https://accompany-api.onrender.com",
+        "EXPO_PUBLIC_WS_BASE_URL": "https://accompany-api.onrender.com",
+        "EXPO_PUBLIC_GIPHY_ANDROID_SDK_KEY": "j6m8ANcGAtUIWrHRVJfHnfURJ1x4vqPZ",
+        "NODE_OPTIONS": "--max-old-space-size=2048",
+        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=\"-Xmx2048m -XX:MaxMetaspaceSize=768m\" -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=2"
+      }
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  }
+}
+
