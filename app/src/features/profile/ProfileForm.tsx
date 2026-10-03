@@ -250,6 +250,7 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
         options={options}
         selected={selected}
         query={query}
+        initialLimit={3}
         onQueryChange={setQuery}
         onToggle={(interest) => setSelected((current) => current.some((item) => item.id === interest.id) ? current.filter((item) => item.id !== interest.id) : [...current, interest])}
         onAddCustom={(value) => setSelected((current) => current.some((item) => item.name.toLowerCase() === value.toLowerCase()) ? current : [...current, { name: value }])}

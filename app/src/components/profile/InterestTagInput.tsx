@@ -77,6 +77,7 @@ type InterestTagInputProps = {
   onAddCustom?: (name: string) => void;
   onRemove: (name: string) => void;
   maxSelections?: number;
+  initialLimit?: number;
 };
 
 export function InterestTagInput({
@@ -88,12 +89,15 @@ export function InterestTagInput({
   onAddCustom,
   onRemove,
   maxSelections = 5,
+  initialLimit,
 }: InterestTagInputProps) {
   const [hint, setHint] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   const selectedNames = new Set(selected.map((item) => item.name.toLowerCase()));
   const trimmed = query.trim().toLowerCase();
+  const isSearching = trimmed.length > 0;
 
-  // Combine default preset interests with options returned by API/server
+  // Combine default preset interests with options returned by API/server and any selected interests
   const mergedOptions = useMemo(() => {
     const list: Array<{ id?: string; name: string; emoji: string }> = [];
     const seen = new Set<string>();
@@ -122,13 +126,51 @@ export function InterestTagInput({
       }
     }
 
+    for (const sel of selected) {
+      if (!seen.has(sel.name.toLowerCase())) {
+        list.push({
+          id: sel.id && isUuid(sel.id) ? sel.id : undefined,
+          name: sel.name,
+          emoji: emojiFor(sel.name),
+        });
+        seen.add(sel.name.toLowerCase());
+      }
+    }
+
     return list;
-  }, [options]);
+  }, [options, selected]);
 
   const filteredOptions = useMemo(() => {
     if (!trimmed) return mergedOptions;
     return mergedOptions.filter((item) => item.name.toLowerCase().includes(trimmed));
   }, [mergedOptions, trimmed]);
+
+  const orderedOptions = useMemo(() => {
+    if (selectedNames.size === 0) return filteredOptions;
+
+    const selectedList: Array<{ id?: string; name: string; emoji: string }> = [];
+    const unselectedList: Array<{ id?: string; name: string; emoji: string }> = [];
+
+    for (const item of filteredOptions) {
+      if (selectedNames.has(item.name.toLowerCase())) {
+        selectedList.push(item);
+      } else {
+        unselectedList.push(item);
+      }
+    }
+
+    return [...selectedList, ...unselectedList];
+  }, [filteredOptions, selectedNames]);
+
+  const visibleLimit = initialLimit ? Math.max(initialLimit, selected.length) : orderedOptions.length;
+  const hasMore = Boolean(initialLimit && orderedOptions.length > visibleLimit);
+
+  const displayOptions = useMemo(() => {
+    if (isSearching || isExpanded || !hasMore || !initialLimit) {
+      return orderedOptions;
+    }
+    return orderedOptions.slice(0, visibleLimit);
+  }, [isSearching, isExpanded, hasMore, initialLimit, orderedOptions, visibleLimit]);
 
   const canAddCustom =
     Boolean(onAddCustom) &&
@@ -198,10 +240,10 @@ export function InterestTagInput({
 
       {/* Grid of Interests */}
       <View className="flex-row flex-wrap gap-sm">
-        {filteredOptions.length === 0 ? (
+        {displayOptions.length === 0 ? (
           <AppText variant="bodyS" tone="muted">No matching interests found.</AppText>
         ) : (
-          filteredOptions.map((interest) => {
+          displayOptions.map((interest) => {
             const active = selectedNames.has(interest.name.toLowerCase());
             return (
               <Pressable
@@ -227,6 +269,32 @@ export function InterestTagInput({
             );
           })
         )}
+
+        {!isSearching && !isExpanded && hasMore ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="+ More"
+            onPress={() => setIsExpanded(true)}
+            className="flex-row items-center gap-xs rounded-full border border-border bg-card px-md py-sm shadow-xs active:bg-muted"
+          >
+            <AppText variant="bodyS" tone="primary" className="font-semibold">
+              + More
+            </AppText>
+          </Pressable>
+        ) : null}
+
+        {!isSearching && isExpanded && hasMore ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Show less"
+            onPress={() => setIsExpanded(false)}
+            className="flex-row items-center gap-xs rounded-full border border-border bg-card px-md py-sm shadow-xs active:bg-muted"
+          >
+            <AppText variant="bodyS" tone="muted" className="font-medium">
+              Show less
+            </AppText>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
