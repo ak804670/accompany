@@ -26,6 +26,7 @@ export class CallService {
     private readonly limiter: RateLimiter,
     private readonly notify: (message: PushMessage) => Promise<void>,
     private readonly redis: Redis,
+    private readonly onPresenceChange?: (userId: string, status: string) => void,
   ) {}
 
   async create(callerId: string, receiverId: string, callType: 'AUDIO' | 'VIDEO', conversationId: string | null) {
