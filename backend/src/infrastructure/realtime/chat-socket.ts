@@ -60,6 +60,10 @@ export function publishToUser(userId: string, event: string, payload: unknown): 
   io?.to(userRoom(userId)).emit(event, payload);
 }
 
+export function broadcastPresence(userId: string, status: 'ONLINE' | 'OFFLINE' | 'ON_CALL'): void {
+  io?.emit(ChatEvents.presenceUpdate, { userId, status });
+}
+
 async function loadConversation(pool: Pool, conversationId: string, userId: string): Promise<ConversationRow | null> {
   const result = await pool.query(
     `SELECT c.status, other_user.user_id AS person_id
