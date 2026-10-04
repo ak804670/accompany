@@ -108,7 +108,7 @@ export function PersonScreen({ userId, onBack, onConversation }: PersonScreenPro
           <View className="flex-1 gap-md">
             <PersonAvatar userId={person.userId} name={person.name} size={120} />
             <AppText variant="h1">{person.name}</AppText>
-            <OnlineStatus online={person.online} />
+            <OnlineStatus online={person.online} onCall={person.onCall} />
             {distance ? (
               <View className="flex-row items-center gap-1">
                 <BrandIcon name="location" size={16} />

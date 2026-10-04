@@ -35,6 +35,11 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
                 COALESCE(unread.count, 0) AS unread_count,
                 (presence.last_seen_at > NOW() - INTERVAL '45 seconds') AS online,
                 EXISTS (
+                  SELECT 1 FROM acc.t_calls call
+                  WHERE (call.caller_id = other_user.user_id OR call.receiver_id = other_user.user_id)
+                    AND call.status IN ('RINGING', 'ACCEPTED', 'CONNECTING', 'CONNECTED')
+                ) AS on_call,
+                EXISTS (
                   SELECT 1 FROM acc.blocks b
                   WHERE b.user_id = $1 AND b.blocked_user_id = other_user.user_id
                 ) AS blocked_by_viewer
@@ -191,7 +196,12 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
       const id = await userId(request.header('authorization'));
       const result = await pool.query(
         `SELECT c.id, c.status, c.created_by, other_user.user_id AS person_id, pr.display_name,
-                (presence.last_seen_at > NOW() - INTERVAL '45 seconds') AS online
+                (presence.last_seen_at > NOW() - INTERVAL '45 seconds') AS online,
+                EXISTS (
+                  SELECT 1 FROM acc.t_calls call
+                  WHERE (call.caller_id = other_user.user_id OR call.receiver_id = other_user.user_id)
+                    AND call.status IN ('RINGING', 'ACCEPTED', 'CONNECTING', 'CONNECTED')
+                ) AS on_call
          FROM acc.conversations c
          JOIN acc.p_conversation_participants mine
            ON mine.conversation_id = c.id AND mine.user_id = $1 AND mine.left_at IS NULL
@@ -377,6 +387,7 @@ function mapConversation(row: {
   created_at?: Date | null;
   unread_count?: number;
   online: boolean;
+  on_call?: boolean;
   blocked_by_viewer?: boolean;
 }, viewerId: string) {
   const status = row.status === 'active' ? 'accepted' : row.status;
@@ -388,6 +399,7 @@ function mapConversation(row: {
     updatedAt: row.created_at ?? null,
     unreadCount: Number(row.unread_count ?? 0),
     online: Boolean(row.online) && !row.blocked_by_viewer,
+    onCall: Boolean(row.on_call) && !row.blocked_by_viewer,
     blocked: Boolean(row.blocked_by_viewer),
     status,
     incoming: row.created_by !== viewerId && row.status === 'pending',

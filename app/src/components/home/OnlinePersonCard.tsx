@@ -28,7 +28,7 @@ export function OnlinePersonCard({ person, onPress }: OnlinePersonCardProps) {
       <View className="gap-sm p-md">
         <View className="gap-xs">
           <AppText variant="h3">{person.name}</AppText>
-          <OnlineStatus online={person.online} />
+          <OnlineStatus online={person.online} onCall={person.onCall} />
           {distance ? <AppText variant="caption" tone="muted">{distance}</AppText> : null}
         </View>
         {person.bio ? <AppText variant="bodyS" tone="muted" numberOfLines={3}>{person.bio}</AppText> : null}

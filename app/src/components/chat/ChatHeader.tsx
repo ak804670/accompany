@@ -12,11 +12,12 @@ type ChatHeaderProps = {
   name: string;
   personId?: string | null;
   online: boolean;
+  onCall?: boolean;
   onBack: () => void;
   actions?: ReactNode;
 };
 
-export function ChatHeader({ name, personId, online, onBack, actions }: ChatHeaderProps) {
+export function ChatHeader({ name, personId, online, onCall, onBack, actions }: ChatHeaderProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -29,7 +30,7 @@ export function ChatHeader({ name, personId, online, onBack, actions }: ChatHead
       <PersonAvatar userId={personId} name={name} size={40} />
       <View className="flex-1">
         <AppText variant="label">{name}</AppText>
-        <OnlineStatus online={online} />
+        <OnlineStatus online={online} onCall={onCall} />
       </View>
       {actions}
     </View>

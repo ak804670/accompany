@@ -14,6 +14,7 @@ export function PersonListCard({ person, onPress }: PersonListCardProps) {
   const distance = formatDistance(person.distanceKm);
   const interests = person.sharedInterests.length > 0 ? person.sharedInterests : person.interests;
   const isOnline = Boolean(person.online);
+  const isOnCall = Boolean(person.onCall);
   const subtitle = [
     person.age ? `${person.age} yrs` : null,
     distance ?? null,
@@ -31,10 +32,10 @@ export function PersonListCard({ person, onPress }: PersonListCardProps) {
         <View className="absolute bottom-1.5 left-1.5 flex-row items-center gap-1.5 rounded-full bg-black/60 px-2 py-0.5">
           <View
             className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: isOnline ? '#39C76A' : '#9CA3AF' }}
+            style={{ backgroundColor: isOnCall ? '#EB9E1F' : isOnline ? '#39C76A' : '#9CA3AF' }}
           />
           <AppText variant="caption" className="text-[10px] font-medium text-white">
-            {isOnline ? 'Online' : 'Offline'}
+            {isOnCall ? 'On call' : isOnline ? 'Online' : 'Offline'}
           </AppText>
         </View>
       </View>

@@ -41,12 +41,13 @@ type ChatScreenProps = {
   name: string;
   personId?: string | null;
   online: boolean;
+  onCall?: boolean;
   highlightCallId?: string;
   onBack: () => void;
   onViewProfile?: (userId: string) => void;
 };
 
-export function ChatScreen({ conversationId, name, personId, online, highlightCallId, onBack, onViewProfile }: ChatScreenProps) {
+export function ChatScreen({ conversationId, name, personId, online, onCall, highlightCallId, onBack, onViewProfile }: ChatScreenProps) {
   const insets = useSafeAreaInsets();
   const { user } = useSession();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -59,6 +60,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
     name: cachedConversation?.name ?? name,
     personId: cachedConversation?.personId ?? personId ?? null,
     online: cachedConversation?.online ?? online,
+    onCall: cachedConversation?.onCall ?? onCall ?? false,
   });
   const [draft, setDraft] = useState('');
   const [otherTyping, setOtherTyping] = useState(false);
@@ -94,6 +96,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
       name: nextConversation?.name ?? name,
       personId: nextConversation?.personId ?? personId ?? null,
       online: nextConversation?.online ?? online,
+      onCall: nextConversation?.onCall ?? onCall ?? false,
     });
   }
   const allowOlder = useRef(false);
@@ -153,7 +156,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
         }
       }
       if (ticket !== loadGeneration.current) return;
-      setHeader({ name: conversation.name, personId: conversation.personId, online: conversation.online });
+      setHeader({ name: conversation.name, personId: conversation.personId, online: conversation.online, onCall: Boolean(conversation.onCall) });
       setCanMessage(conversation.canMessage);
       setCanRespond(conversation.canRespond);
       setStatus(conversation.status);
@@ -192,7 +195,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
         ]);
         if (!active) return;
         if (storedConversation) {
-          setHeader({ name: storedConversation.name, personId: storedConversation.personId, online: storedConversation.online });
+          setHeader({ name: storedConversation.name, personId: storedConversation.personId, online: storedConversation.online, onCall: Boolean(storedConversation.onCall) });
           if (storedConversation.canMessage !== undefined) setCanMessage(storedConversation.canMessage);
           if (storedConversation.canRespond !== undefined) setCanRespond(storedConversation.canRespond);
           setStatus(storedConversation.status);
@@ -248,12 +251,20 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
       if (body.conversationId === conversationId) setOtherTyping(false);
     });
     const offPresence = socketService.subscribe(ChatEvents.presenceUpdate, (payload) => {
-      const data = payload as { userId?: string; status?: 'ONLINE' | 'OFFLINE' };
-      if (data?.userId === header.personId && (data.status === 'ONLINE' || data.status === 'OFFLINE')) {
-        const isOnline = data.status === 'ONLINE';
-        setHeader((prev) => ({ ...prev, online: isOnline }));
-        if (user?.id && data.userId) {
-          void chatRepository.updatePresence(user.id, data.userId, isOnline).catch(() => undefined);
+      const data = payload as { userId?: string; status?: 'ONLINE' | 'OFFLINE' | 'ON_CALL' };
+      if (data?.userId === header.personId) {
+        if (data.status === 'ON_CALL') {
+          setHeader((prev) => ({ ...prev, onCall: true, online: true }));
+        } else if (data.status === 'ONLINE') {
+          setHeader((prev) => ({ ...prev, onCall: false, online: true }));
+          if (user?.id && data.userId) {
+            void chatRepository.updatePresence(user.id, data.userId, true).catch(() => undefined);
+          }
+        } else if (data.status === 'OFFLINE') {
+          setHeader((prev) => ({ ...prev, onCall: false, online: false }));
+          if (user?.id && data.userId) {
+            void chatRepository.updatePresence(user.id, data.userId, false).catch(() => undefined);
+          }
         }
       }
     });
@@ -295,6 +306,10 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
 
   async function startCall(kind: 'audio' | 'video') {
     if (!header.personId) return;
+    if (header.onCall) {
+      setCallNotice(`${header.name} is currently on another call.`);
+      return;
+    }
     try {
       const response = await callService.start(header.personId, kind, conversationId);
       const callData = response.call;
@@ -460,6 +475,7 @@ export function ChatScreen({ conversationId, name, personId, online, highlightCa
         name={header.name}
         personId={header.personId}
         online={header.online}
+        onCall={header.onCall}
         onBack={onBack}
         actions={
           <View className="flex-row items-center">

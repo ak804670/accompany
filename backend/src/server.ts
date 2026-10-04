@@ -13,7 +13,7 @@ import { WalletService } from './modules/wallet/wallet.service.js';
 import { readCommunicationConfig } from './config/communication.js';
 import { readConfig } from './config/env.js';
 import { createPool } from './infrastructure/database/pool.js';
-import { attachChatSocket } from './infrastructure/realtime/chat-socket.js';
+import { attachChatSocket, broadcastPresence, isUserOnline } from './infrastructure/realtime/chat-socket.js';
 import { RedisRateLimiter } from './infrastructure/redis/rate-limit.js';
 import { PgAuthRepository } from './modules/auth/auth.repository.js';
 import { AuthService } from './modules/auth/auth.service.js';
@@ -92,6 +92,10 @@ const callService = callConfig
       new RedisRateLimiter(redis),
       (message) => notifications.enqueue(message).then(() => undefined),
       redis,
+      (userId, status) => {
+        const nextStatus = status === 'ON_CALL' ? 'ON_CALL' : isUserOnline(userId) ? 'ONLINE' : 'OFFLINE';
+        broadcastPresence(userId, nextStatus);
+      },
     )
   : null;
 const notificationWorker = callService
