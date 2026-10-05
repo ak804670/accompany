@@ -137,8 +137,8 @@ export class PgProfileRepository implements ProfileRepository {
     if (updated.rowCount === 0) {
       await this.pool.query(
         `INSERT INTO acc.m_profiles (user_id, display_name, date_of_birth, bio, language_preferences, profile_status, onboarding_step, account_intent, support_role, expert_subject, verification_status, verification_note)
-         VALUES ($1, btrim($2), $3, $4, COALESCE($5::text[], '{}'), COALESCE($6, 'incomplete'), COALESCE($7, 'intent'), COALESCE($9, 'provider'), $10, $12, COALESCE($14, 'none'), $15)`,
-        values.slice(0, 15),
+         VALUES ($1, btrim($2), $3, $4, COALESCE($5::text[], '{}'), COALESCE($6, 'incomplete'), COALESCE($7, 'intent'), COALESCE($8, 'provider'), $9, $10, COALESCE($11, 'none'), $12)`,
+        [values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[8], values[9], values[11], values[13], values[14]],
       );
     }
     const profile = await this.getProfile(userId);
