@@ -1,6 +1,6 @@
 import type { OnboardingStep, ProfileRecord } from './profile.types.js';
 
-const order: OnboardingStep[] = ['basics', 'photo', 'about', 'interests', 'preferences', 'review', 'complete'];
+const order: OnboardingStep[] = ['intent', 'role', 'certificate', 'basics', 'gender', 'location', 'photo', 'about', 'interests', 'preferences', 'rates', 'review', 'complete'];
 
 export function isComplete(profile: Pick<ProfileRecord, 'displayName' | 'dateOfBirth' | 'media'>): boolean {
   return Boolean(profile.displayName && profile.dateOfBirth && profile.media.some((item) => item.isPrimary));
@@ -8,7 +8,7 @@ export function isComplete(profile: Pick<ProfileRecord, 'displayName' | 'dateOfB
 
 export function nextStep(current: OnboardingStep): OnboardingStep {
   const index = order.indexOf(current);
-  return order[Math.min(index + 1, order.length - 1)] ?? 'basics';
+  return order[Math.min(Math.max(index, 0) + 1, order.length - 1)] ?? 'intent';
 }
 
 export function advanceStep(current: OnboardingStep, saved: OnboardingStep): OnboardingStep {

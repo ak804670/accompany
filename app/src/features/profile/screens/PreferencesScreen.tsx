@@ -29,7 +29,7 @@ export function PreferencesScreen({ navigation }: Props) {
     setError(null);
     try {
       setProfile(await profileService.update({ languagePreferences: selected }));
-      navigation.navigate('Review');
+      navigation.navigate(profile?.accountIntent === 'anonymous' ? 'Review' : 'Rates');
     } catch (caught) {
       setError(profileService.failureMessage(caught));
     } finally {
@@ -42,7 +42,7 @@ export function PreferencesScreen({ navigation }: Props) {
       step={6}
       title="Languages"
       subtitle="Which languages are you comfortable talking in?"
-      onBack={() => navigation.navigate('Interests')}
+      onBack={() => profile?.accountIntent === 'anonymous' ? navigation.navigate('Basics') : navigation.navigate('Interests')}
       onContinue={() => void continueNext()}
       loading={loading}
       error={error}

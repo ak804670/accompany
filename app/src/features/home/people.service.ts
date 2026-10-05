@@ -31,6 +31,9 @@ export type OnlinePerson = {
   distanceKm: number | null;
   relationship: PersonRelationship;
   conversationId: string | null;
+  supportRole?: 'friendly' | 'astrologer' | 'counselor' | 'expert' | null;
+  expertSubject?: string | null;
+  verified?: boolean;
   rating?: {
     average: number;
     count: number;

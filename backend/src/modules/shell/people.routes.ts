@@ -94,7 +94,7 @@ export function createShellRouter(auth: AuthService, pool: Pool, media?: MediaSt
       }
       const radiusMeters = radius === null ? null : radius * 1000;
       const result = await pool.query(
-        `SELECT p.user_id, pr.display_name, pr.date_of_birth, pr.bio, media.id AS media_id, p.last_seen_at,
+        `SELECT p.user_id, pr.display_name, pr.date_of_birth, pr.bio, pr.support_role, pr.expert_subject, pr.verification_status, media.id AS media_id, p.last_seen_at,
                 (p.last_seen_at > NOW() - INTERVAL '45 seconds') AS online,
                 CASE
                   WHEN $4::float8 IS NULL OR pr.latitude IS NULL OR NOT pr.location_discovery THEN NULL
@@ -109,6 +109,7 @@ export function createShellRouter(auth: AuthService, pool: Pool, media?: MediaSt
          ) media ON TRUE
          WHERE p.user_id <> $1
            AND pr.profile_status = 'active'
+           AND pr.account_intent = 'provider'
            AND p.last_seen_at > NOW() - INTERVAL '45 seconds'
            AND ($2::timestamptz IS NULL OR p.last_seen_at < $2::timestamptz)
            AND NOT EXISTS (
@@ -152,7 +153,7 @@ export function createShellRouter(auth: AuthService, pool: Pool, media?: MediaSt
     try {
       const id = await userId(request.header('authorization'));
       const result = await pool.query(
-        `SELECT pr.user_id, pr.display_name, pr.date_of_birth, pr.bio, media.id AS media_id,
+        `SELECT pr.user_id, pr.display_name, pr.date_of_birth, pr.bio, pr.support_role, pr.expert_subject, pr.verification_status, media.id AS media_id,
                 (presence.last_seen_at > NOW() - INTERVAL '45 seconds') AS online,
                 CASE
                   WHEN viewer.latitude IS NULL OR pr.latitude IS NULL OR NOT pr.location_discovery OR NOT viewer.location_discovery THEN NULL
@@ -166,7 +167,7 @@ export function createShellRouter(auth: AuthService, pool: Pool, media?: MediaSt
            WHERE user_id = pr.user_id AND is_primary AND deleted_at IS NULL
            LIMIT 1
          ) media ON TRUE
-         WHERE pr.user_id = $1 AND pr.deleted_at IS NULL AND pr.profile_status = 'active'`,
+         WHERE pr.user_id = $1 AND pr.deleted_at IS NULL AND pr.profile_status = 'active' AND pr.account_intent = 'provider'`,
         [request.params.userId, id],
       );
       const row = result.rows[0];
@@ -189,8 +190,10 @@ export function createShellRouter(auth: AuthService, pool: Pool, media?: MediaSt
         return;
       }
       const result = await pool.query(
-        `SELECT storage_key FROM acc.m_profile_media
-         WHERE user_id = $1 AND is_primary AND deleted_at IS NULL AND moderation_status <> 'rejected'
+        `SELECT media.storage_key FROM acc.m_profile_media media
+         JOIN acc.m_profiles profile ON profile.user_id = media.user_id AND profile.deleted_at IS NULL
+         WHERE media.user_id = $1 AND media.is_primary AND media.deleted_at IS NULL AND media.moderation_status <> 'rejected'
+           AND profile.profile_status = 'active' AND profile.account_intent = 'provider'
          LIMIT 1`,
         [request.params.userId],
       );

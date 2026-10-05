@@ -1,4 +1,6 @@
-export type OnboardingStep = 'basics' | 'photo' | 'about' | 'interests' | 'preferences' | 'review' | 'complete';
+export type OnboardingStep = 'intent' | 'role' | 'certificate' | 'basics' | 'gender' | 'location' | 'photo' | 'about' | 'interests' | 'preferences' | 'rates' | 'review' | 'complete';
+export type AccountIntent = 'anonymous' | 'provider';
+export type SupportRole = 'friendly' | 'astrologer' | 'counselor' | 'expert';
 
 export type ProfileMedia = {
   id: string;
@@ -24,6 +26,11 @@ export type ProfileRecord = {
   interests: Interest[];
   media: ProfileMedia[];
   complete: boolean;
+  accountIntent: AccountIntent;
+  supportRole: SupportRole | null;
+  expertSubject: string | null;
+  verificationStatus: 'none' | 'pending' | 'approved' | 'rejected';
+  verificationNote: string | null;
 };
 
 export type StoredMedia = {

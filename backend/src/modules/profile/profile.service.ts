@@ -13,7 +13,8 @@ import { logger } from '../../utils/logger.js';
 const defaultMediaLimits = { maxBytes: 4_000_000, maxPhotos: 10 };
 
 function withComplete(profile: ProfileRecord): ProfileRecord {
-  return { ...profile, complete: profile.profileStatus === 'active' && isComplete(profile) };
+  const anonymousComplete = profile.accountIntent === 'anonymous' && profile.profileStatus === 'hidden' && Boolean(profile.displayName && profile.dateOfBirth);
+  return { ...profile, complete: anonymousComplete || (profile.profileStatus === 'active' && isComplete(profile)) };
 }
 
 export class ProfileService {
@@ -44,10 +45,11 @@ export class ProfileService {
         bio: null,
         languagePreferences: [],
         profileStatus: 'incomplete',
-        step: 'basics',
+        step: 'intent',
         interests: [],
         media: [],
         complete: false,
+        accountIntent: 'provider', supportRole: null, expertSubject: null, verificationStatus: 'none', verificationNote: null,
       };
     }
     return withComplete(profile);
@@ -182,10 +184,54 @@ export class ProfileService {
 
   async complete(userId: string): Promise<ProfileRecord> {
     const current = await this.get(userId);
+    if (current.accountIntent === 'anonymous') {
+      if (!current.displayName || !current.dateOfBirth) {
+        throw new ProfileError('PROFILE_INCOMPLETE', 400, 'Add your alias and date of birth first.');
+      }
+      return withComplete(await this.repository.saveProfile(userId, { profileStatus: 'hidden', step: 'complete' }));
+    }
+    const rates = await this.repository.getRates(userId);
+    if (!rates.chat && !rates.audio && !rates.video) {
+      throw new ProfileError('PROFILE_INCOMPLETE', 400, 'Add at least one rate before continuing.');
+    }
     if (!isComplete(current)) {
       throw new ProfileError('PROFILE_INCOMPLETE', 400, 'Add your name, date of birth, and a profile photo first.');
     }
     const saved = await this.repository.saveProfile(userId, { profileStatus: 'active', step: 'complete' });
+    return withComplete(saved);
+  }
+
+  async setIntent(userId: string, body: unknown): Promise<ProfileRecord> {
+    const intent = (body as { intent?: unknown } | null)?.intent;
+    if (intent !== 'anonymous' && intent !== 'provider') throw new ProfileError('VALIDATION_ERROR', 400, 'Choose how you want to use the app.');
+    const current = await this.get(userId);
+    await this.repository.ensureUser(userId);
+    if (intent === 'anonymous') {
+      const saved = await this.repository.saveProfile(userId, { accountIntent: intent, supportRole: null, expertSubject: null, verificationStatus: 'none', verificationNote: null, profileStatus: 'hidden', step: current.displayName && current.dateOfBirth ? 'complete' : 'basics' });
+      return withComplete(saved);
+    }
+    const rates = await this.repository.getRates(userId);
+    const ready = isComplete(current) && Boolean(rates.chat || rates.audio || rates.video);
+    return withComplete(await this.repository.saveProfile(userId, { accountIntent: intent, profileStatus: ready ? 'active' : 'incomplete', step: ready ? 'complete' : 'role' }));
+  }
+
+  async setRole(userId: string, body: unknown): Promise<ProfileRecord> {
+    const input = body as { role?: unknown; expertSubject?: unknown } | null;
+    const roles = ['friendly', 'astrologer', 'counselor', 'expert'];
+    if (!input || !roles.includes(String(input.role))) throw new ProfileError('VALIDATION_ERROR', 400, 'Choose a support role.');
+    const role = input.role as ProfileRecord['supportRole'];
+    const subject = role === 'expert' && typeof input.expertSubject === 'string' ? input.expertSubject.trim() : null;
+    if (role === 'expert' && (!subject || subject.length > 80)) throw new ProfileError('VALIDATION_ERROR', 400, 'Enter the expert subject.');
+    const current = await this.get(userId);
+    const changed = current.supportRole !== role || current.expertSubject !== subject;
+    const rates = await this.repository.getRates(userId);
+    const ready = isComplete(current) && Boolean(rates.chat || rates.audio || rates.video);
+    const saved = await this.repository.saveProfile(userId, {
+      accountIntent: 'provider', supportRole: role, expertSubject: subject,
+      verificationStatus: role === 'friendly' ? 'none' : changed ? 'none' : current.verificationStatus,
+      verificationNote: changed || role === 'friendly' ? null : current.verificationNote,
+      profileStatus: ready ? 'active' : 'incomplete', step: ready ? 'complete' : role === 'friendly' ? 'basics' : 'certificate',
+    });
     return withComplete(saved);
   }
 

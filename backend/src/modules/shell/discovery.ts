@@ -38,6 +38,9 @@ export type PublicPerson = {
   relationship: PersonRelationship;
   conversationId: string | null;
   rating?: PublicRatingSummary;
+  supportRole: 'friendly' | 'astrologer' | 'counselor' | 'expert' | null;
+  expertSubject: string | null;
+  verified: boolean;
 };
 
 export type PersonRelationship =
@@ -108,6 +111,9 @@ export function toPublicPerson(row: Record<string, unknown>, extras: {
     relationship: extras.relationship,
     conversationId: extras.conversationId,
     rating: extras.rating ?? { average: 0, count: 0 },
+    supportRole: (row.support_role as PublicPerson['supportRole']) ?? null,
+    expertSubject: typeof row.expert_subject === 'string' ? row.expert_subject : null,
+    verified: row.verification_status === 'approved',
   };
   for (const key of Object.keys(person)) {
     if (coordinateKey.test(key)) {

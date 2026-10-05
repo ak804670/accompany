@@ -1,4 +1,8 @@
 export type OnboardingStackParamList = {
+  Intent: undefined;
+  Role: undefined;
+  Certificate: undefined;
+  Rates: undefined;
   Basics: undefined;
   Gender: undefined;
   Location: undefined;

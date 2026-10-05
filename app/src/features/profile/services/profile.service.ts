@@ -28,6 +28,16 @@ export const profileService = {
     return result.profile;
   },
 
+  async setIntent(intent: 'anonymous' | 'provider'): Promise<UserProfile> {
+    const result = await apiClient.put<ProfileResponse>('/v1/profile/intent', { intent });
+    return result.profile;
+  },
+
+  async setRole(role: 'friendly' | 'astrologer' | 'counselor' | 'expert', expertSubject?: string): Promise<UserProfile> {
+    const result = await apiClient.put<ProfileResponse>('/v1/profile/role', { role, expertSubject });
+    return result.profile;
+  },
+
   async update(body: { bio?: string; languagePreferences?: string[]; displayName?: string; dateOfBirth?: string }): Promise<UserProfile> {
     try {
       const result = await apiClient.patch<ProfileResponse>('/v1/profile', body);

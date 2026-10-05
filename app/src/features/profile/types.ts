@@ -1,4 +1,4 @@
-export type OnboardingStep = 'basics' | 'gender' | 'location' | 'photo' | 'about' | 'interests' | 'preferences' | 'review' | 'complete';
+export type OnboardingStep = 'intent' | 'role' | 'certificate' | 'basics' | 'gender' | 'location' | 'photo' | 'about' | 'interests' | 'preferences' | 'rates' | 'review' | 'complete';
 
 export type ProfileInterest = { id: string; name: string; slug: string };
 
@@ -14,12 +14,20 @@ export type UserProfile = {
   interests: ProfileInterest[];
   media: ProfileMedia[];
   complete: boolean;
+  accountIntent?: 'anonymous' | 'provider';
+  supportRole?: 'friendly' | 'astrologer' | 'counselor' | 'expert' | null;
+  expertSubject?: string | null;
+  verificationStatus?: 'none' | 'pending' | 'approved' | 'rejected';
+  verificationNote?: string | null;
 };
 
-export type OnboardingRoute = 'Basics' | 'Gender' | 'Location' | 'Photo' | 'About' | 'Interests' | 'Preferences' | 'Review';
+export type OnboardingRoute = 'Intent' | 'Role' | 'Certificate' | 'Basics' | 'Gender' | 'Location' | 'Photo' | 'About' | 'Interests' | 'Preferences' | 'Rates' | 'Review';
 
 export function routeForStep(step: OnboardingStep): OnboardingRoute {
   switch (step) {
+    case 'intent': return 'Intent';
+    case 'role': return 'Role';
+    case 'certificate': return 'Certificate';
     case 'gender':
       return 'Gender';
     case 'location':

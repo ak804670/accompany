@@ -49,6 +49,16 @@ export function createProfileRouter(service: ProfileService) {
     }
   });
 
+  router.put('/intent', async (request, response, next) => {
+    try { response.json({ profile: await service.setIntent(await userId(request), request.body) }); }
+    catch (error) { next(error); }
+  });
+
+  router.put('/role', async (request, response, next) => {
+    try { response.json({ profile: await service.setRole(await userId(request), request.body) }); }
+    catch (error) { next(error); }
+  });
+
   router.post('/complete', async (request, response, next) => {
     try {
       const profile = await service.complete(await userId(request));

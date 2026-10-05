@@ -8,8 +8,13 @@ export type ProfileWrite = {
   dateOfBirth?: string | null;
   bio?: string | null;
   languagePreferences?: string[];
-  profileStatus?: ProfileRecord['profileStatus'];
   step?: OnboardingStep;
+  profileStatus?: ProfileRecord['profileStatus'];
+  accountIntent?: ProfileRecord['accountIntent'];
+  supportRole?: ProfileRecord['supportRole'];
+  expertSubject?: string | null;
+  verificationStatus?: ProfileRecord['verificationStatus'];
+  verificationNote?: string | null;
 };
 
 export interface ProfileRepository {
@@ -36,6 +41,8 @@ type ProfileRow = {
   language_preferences: string[];
   profile_status: ProfileRecord['profileStatus'];
   onboarding_step: OnboardingStep;
+  account_intent: ProfileRecord['accountIntent']; support_role: ProfileRecord['supportRole']; expert_subject: string | null;
+  verification_status: ProfileRecord['verificationStatus']; verification_note: string | null;
 };
 
 function ratesFrom(rows: Array<{ communication_type: string; rate_coins: number | string }>) {
@@ -85,7 +92,8 @@ export class PgProfileRepository implements ProfileRepository {
 
   async getProfile(userId: string): Promise<ProfileRecord | null> {
     const result = await this.pool.query(
-      `SELECT id, user_id, display_name, date_of_birth, bio, language_preferences, profile_status, onboarding_step
+      `SELECT id, user_id, display_name, date_of_birth, bio, language_preferences, profile_status, onboarding_step,
+              account_intent, support_role, expert_subject, verification_status, verification_note
        FROM acc.m_profiles WHERE user_id = $1 AND deleted_at IS NULL`,
       [userId],
     );
@@ -107,6 +115,10 @@ export class PgProfileRepository implements ProfileRepository {
       write.profileStatus ?? null,
       write.step ?? null,
       write.bio !== undefined,
+      write.accountIntent ?? null, write.supportRole ?? null, write.supportRole !== undefined,
+      write.expertSubject === undefined ? null : write.expertSubject, write.expertSubject !== undefined,
+      write.verificationStatus ?? null, write.verificationNote === undefined ? null : write.verificationNote,
+      write.verificationNote !== undefined,
     ];
     const updated = await this.pool.query(
       `UPDATE acc.m_profiles SET
@@ -116,14 +128,17 @@ export class PgProfileRepository implements ProfileRepository {
          language_preferences = COALESCE($5::text[], language_preferences),
          profile_status = COALESCE($6, profile_status),
          onboarding_step = COALESCE($7, onboarding_step)
+         , account_intent = COALESCE($9, account_intent), support_role = CASE WHEN $11::boolean THEN $10 ELSE support_role END
+         , expert_subject = CASE WHEN $13::boolean THEN $12 ELSE expert_subject END
+         , verification_status = COALESCE($14, verification_status), verification_note = CASE WHEN $16::boolean THEN $15 ELSE verification_note END
        WHERE user_id = $1 AND deleted_at IS NULL`,
       values,
     );
     if (updated.rowCount === 0) {
       await this.pool.query(
-        `INSERT INTO acc.m_profiles (user_id, display_name, date_of_birth, bio, language_preferences, profile_status, onboarding_step)
-         VALUES ($1, btrim($2), $3, $4, COALESCE($5::text[], '{}'), COALESCE($6, 'incomplete'), COALESCE($7, 'basics'))`,
-        values.slice(0, 7),
+        `INSERT INTO acc.m_profiles (user_id, display_name, date_of_birth, bio, language_preferences, profile_status, onboarding_step, account_intent, support_role, expert_subject, verification_status, verification_note)
+         VALUES ($1, btrim($2), $3, $4, COALESCE($5::text[], '{}'), COALESCE($6, 'incomplete'), COALESCE($7, 'intent'), COALESCE($9, 'provider'), $10, $12, COALESCE($14, 'none'), $15)`,
+        values.slice(0, 15),
       );
     }
     const profile = await this.getProfile(userId);
@@ -368,6 +383,8 @@ export class PgProfileRepository implements ProfileRepository {
       interests,
       media,
       complete: false,
+      accountIntent: row.account_intent ?? 'provider', supportRole: row.support_role ?? null,
+      expertSubject: row.expert_subject, verificationStatus: row.verification_status ?? 'none', verificationNote: row.verification_note,
     };
   }
 }

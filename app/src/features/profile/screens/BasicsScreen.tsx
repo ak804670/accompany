@@ -88,7 +88,7 @@ export function BasicsScreen({ navigation }: Props) {
       const saved = await profileService.saveBasics(trimmed, toIso(date));
       await preferencesStorage.remove('onboarding.displayName');
       setProfile(saved);
-      navigation.navigate('Gender');
+      navigation.navigate(saved.accountIntent === 'anonymous' ? 'Preferences' : 'Gender');
     } catch (caught) {
       setError(profileService.failureMessage(caught));
     } finally {
@@ -99,8 +99,8 @@ export function BasicsScreen({ navigation }: Props) {
   return (
     <OnboardingFrame
       step={0}
-      title="What should people call you?"
-      subtitle="Your name and date of birth stay on your profile."
+      title={profile?.accountIntent === 'anonymous' ? 'Choose your in-call alias' : 'What should people call you?'}
+      subtitle={profile?.accountIntent === 'anonymous' ? 'Your alias is only shown in calls.' : 'Your name and date of birth stay on your profile.'}
       onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
       onContinue={() => void continueNext()}
       loading={loading}

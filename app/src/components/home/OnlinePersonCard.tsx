@@ -43,6 +43,7 @@ export function OnlinePersonCard({ person, onPress }: OnlinePersonCardProps) {
             ) : null}
           </View>
           <OnlineStatus online={person.online} onCall={person.onCall} />
+          {person.supportRole && person.supportRole !== 'friendly' ? <AppText variant="caption" tone="primary">{person.supportRole[0].toUpperCase() + person.supportRole.slice(1)}{person.supportRole === 'expert' && person.expertSubject ? ` · ${person.expertSubject}` : ''}{person.verified ? ' · Verified' : ''}</AppText> : null}
           {distance ? <AppText variant="caption" tone="muted">{distance}</AppText> : null}
         </View>
         {person.bio ? <AppText variant="bodyS" tone="muted" numberOfLines={3}>{person.bio}</AppText> : null}

@@ -39,6 +39,11 @@ export class MemoryProfileRepository implements ProfileRepository {
       interests: current?.interests ?? [],
       media: current?.media ?? [],
       complete: false,
+      accountIntent: write.accountIntent ?? current?.accountIntent ?? 'provider',
+      supportRole: write.supportRole === undefined ? current?.supportRole ?? null : write.supportRole,
+      expertSubject: write.expertSubject === undefined ? current?.expertSubject ?? null : write.expertSubject,
+      verificationStatus: write.verificationStatus ?? current?.verificationStatus ?? 'none',
+      verificationNote: write.verificationNote === undefined ? current?.verificationNote ?? null : write.verificationNote,
     };
     this.profiles.set(userId, next);
     return next;

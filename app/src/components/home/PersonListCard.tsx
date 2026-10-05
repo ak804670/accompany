@@ -60,6 +60,7 @@ export function PersonListCard({ person, onPress }: PersonListCardProps) {
             {subtitle}
           </AppText>
         ) : null}
+        {person.supportRole && person.supportRole !== 'friendly' ? <AppText variant="caption" tone="primary">{person.supportRole[0].toUpperCase() + person.supportRole.slice(1)}{person.supportRole === 'expert' && person.expertSubject ? ` · ${person.expertSubject}` : ''}{person.verified ? ' · Verified' : ''}</AppText> : null}
         {interests.length > 0 ? (
           <View className="mt-1 flex-row flex-wrap gap-1">
             {interests.slice(0, 3).map((interest) => (
@@ -78,4 +79,3 @@ export function PersonListCard({ person, onPress }: PersonListCardProps) {
     </Pressable>
   );
 }
-

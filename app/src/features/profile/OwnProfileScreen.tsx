@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/design-system/AppButton';
@@ -26,7 +26,7 @@ type OwnProfileScreenProps = {
 
 export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScreenProps) {
   const insets = useSafeAreaInsets();
-  const { profile } = useProfile();
+  const { profile, setProfile } = useProfile();
   const { user } = useSession();
   const { logout } = useAuth();
   const { preference, setPreference } = useTheme();
@@ -86,6 +86,14 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
         </AppButton>
       </View>
       <ProfileSection title="Profile information">
+        <Info label="Account intent" value={profile?.accountIntent === 'anonymous' ? 'Anonymous listener' : 'Listed companion'} />
+        {profile?.accountIntent === 'provider' ? <Info label="Support role" value={`${profile.supportRole ?? 'Friendly'}${profile.supportRole === 'expert' && profile.expertSubject ? ` · ${profile.expertSubject}` : ''}${profile.verificationStatus === 'approved' ? ' · Verified' : ''}`} /> : null}
+        <AppButton variant="outline" onPress={() => {
+          const becomingAnonymous = profile?.accountIntent !== 'anonymous';
+          const change = async () => { try { setProfile(await profileService.setIntent(becomingAnonymous ? 'anonymous' : 'provider')); } catch { /* keep the current profile visible */ } };
+          if (becomingAnonymous) Alert.alert('Become an anonymous listener?', 'Your profile and photo will disappear from discovery. You can change this later.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Continue', onPress: () => void change() }]);
+          else void change();
+        }}>{profile?.accountIntent === 'anonymous' ? 'Become a listed companion' : 'Become an anonymous listener'}</AppButton>
         <Info label="Name" value={name} />
         <Info label="Bio" value={profile?.bio?.trim() || 'Add a short introduction'} />
         <AppText variant="caption" tone="muted">Interests</AppText>
