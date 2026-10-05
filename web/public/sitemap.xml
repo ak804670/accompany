@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+
+  <!-- Core Pages -->
+  <url>
+    <loc>https://accompanyapp.in/</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <url>
+    <loc>https://accompanyapp.in/blogs</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://accompanyapp.in/contact</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://accompanyapp.in/terms</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- Blog Posts -->
+  <url>
+    <loc>https://accompanyapp.in/blogs/healing-after-a-sudden-breakup</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=1200&q=80</image:loc>
+      <image:title>Healing After a Sudden Breakup: Why Talking Out Loud Changes Everything</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://accompanyapp.in/blogs/loneliness-in-a-crowded-city</loc>
+    <lastmod>2026-10-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1477959858617-67f30bc75b82?auto=format&fit=crop&w=1200&q=80</image:loc>
+      <image:title>The Urban Paradox: Feeling Deeply Isolated in a City of Millions</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://accompanyapp.in/blogs/dating-burnout-and-ghosting</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=1200&q=80</image:loc>
+      <image:title>Dating Burnout is Real: How to Protect Your Peace in the Era of Fast Swipes</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://accompanyapp.in/blogs/the-magic-of-the-2am-conversation</loc>
+    <lastmod>2026-10-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80</image:loc>
+      <image:title>The Magic of 2 AM Talks: Why Late Nights Make Us Crave Honest Connection</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://accompanyapp.in/blogs/is-it-overthinking-or-intuition</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1499209974431-9dddcece7f88?auto=format&fit=crop&w=1200&q=80</image:loc>
+      <image:title>Is It Overthinking or Intuition? Untangling Relationship Doubts</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://accompanyapp.in/blogs/why-men-struggle-to-open-up</loc>
+    <lastmod>2026-09-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&w=1200&q=80</image:loc>
+      <image:title>Silent Struggles: Why It's Still So Hard for Men to Express Vulnerability</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://accompanyapp.in/blogs/active-listening-in-modern-life</loc>
+    <lastmod>2026-09-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1200&q=80</image:loc>
+      <image:title>The Lost Art of Feeling Heard: What Real Empathy Actually Sounds Like</image:title>
+    </image:image>
+  </url>
+</urlset>

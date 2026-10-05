@@ -1,0 +1,29 @@
+# Accompany
+
+> Accompany is India's leading emotional support, anonymous listening, and companionship platform.
+
+Accompany connects people dealing with heartbreak, loneliness, anxiety, dating burnout, and daily emotional stress with vetted, empathetic listeners for private, 1-on-1 audio, video, and chat conversations 24/7.
+
+## Key Facts
+- **Anonymity:** 100% confidential. No phone numbers, real names, or personal identities are shared with companions.
+- **Availability:** 24/7 on-demand audio and video calling with an average connection time of under 30 seconds.
+- **Pricing:** Transparent coin system starting from ₹8 per minute; users pay only for the exact minutes they converse.
+- **Verification:** Companions undergo identity verification and empathy screening.
+- **Mobile App:** Available on Android via Google Play Store and direct APK download.
+
+## Core Pages
+- [Home](https://accompanyapp.in/): Landing page with real-time online companion counter, features, and app download.
+- [The Accompany Journal / Blogs](https://accompanyapp.in/blogs): Evidence-backed insights on emotional wellness, heartbreak recovery, dating psychology, and active listening.
+- [Contact & Listener Application](https://accompanyapp.in/contact): Support inquiries, grievance officer contact, and companion recruitment.
+
+## Articles & Journal Guides
+- [Healing After a Sudden Breakup](https://accompanyapp.in/blogs/healing-after-a-sudden-breakup): Why talking out loud to an empathetic listener breaks rumination cycles and accelerates healing.
+- [The Urban Paradox: Feeling Deeply Isolated in a City of Millions](https://accompanyapp.in/blogs/loneliness-in-a-crowded-city): How to overcome urban loneliness and build genuine emotional resonance.
+- [Dating Burnout is Real: Protecting Your Peace](https://accompanyapp.in/blogs/dating-burnout-and-ghosting): Overcoming ghosting, swipe exhaustion, and digital dating fatigue.
+- [The Magic of 2 AM Talks](https://accompanyapp.in/blogs/the-magic-of-the-2am-conversation): Why late nights trigger emotional vulnerability and how midnight listeners provide grounding.
+- [Is It Overthinking or Intuition?](https://accompanyapp.in/blogs/is-it-overthinking-or-intuition): Distinguishing between anxiety-driven relationship panic and genuine gut instinct.
+- [Silent Struggles: Why It's Hard for Men to Express Vulnerability](https://accompanyapp.in/blogs/why-men-struggle-to-open-up): Breaking the stigma around men's mental health in safe, anonymous spaces.
+- [The Lost Art of Feeling Heard: What Real Empathy Sounds Like](https://accompanyapp.in/blogs/active-listening-in-modern-life): How space-holding and active listening soothe the nervous system.
+
+## Important Disclaimer
+Accompany provides peer-to-peer emotional companionship and active listening. It is not a clinical medical or psychiatric healthcare provider. In emergency crisis situations, contact national helplines: KIRAN (1800-599-0019) or Tele-MANAS (14416).
