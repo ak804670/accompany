@@ -262,7 +262,7 @@ export function createShellRouter(auth: AuthService, pool: Pool, media?: MediaSt
 async function decoratePeople(pool: Pool, viewerId: string, rows: Array<Record<string, unknown>>, withRelationship = false) {
   const ids = rows.map((row) => String(row.user_id));
   if (ids.length === 0) return [];
-  const [interests, rates, relations] = await Promise.all([
+  const [interests, rates, relations, ratings] = await Promise.all([
     pool.query(
       `SELECT p.user_id, i.name,
               EXISTS (
@@ -307,12 +307,22 @@ async function decoratePeople(pool: Pool, viewerId: string, rows: Array<Record<s
            WHERE blocked.blocked_user_id = $2 AND blocked.user_id = ANY($1::uuid[])`,
           [ids, viewerId],
         ),
+    pool.query(
+      `SELECT rated_user_id,
+              ROUND(AVG(rating)::numeric, 1)::float8 AS avg_rating,
+              COUNT(*)::int AS count_rating
+       FROM acc.t_user_ratings
+       WHERE rated_user_id = ANY($1::uuid[])
+       GROUP BY rated_user_id`,
+      [ids],
+    ),
   ]);
   return rows.map((row) => {
     const userId = String(row.user_id);
     const tags = interests.rows.filter((item) => item.user_id === userId);
     const rateRows = rates.rows.filter((item) => item.companion_user_id === userId);
     const relation = relations.rows.find((item) => item.other_id === userId);
+    const ratingRow = ratings.rows.find((item) => item.rated_user_id === userId);
     const meters = row.distance_meters === null || row.distance_meters === undefined ? null : Number(row.distance_meters);
     const relationship: PersonRelationship = relation
       ? relationshipFrom({
@@ -331,6 +341,10 @@ async function decoratePeople(pool: Pool, viewerId: string, rows: Array<Record<s
       distanceKm: meters === null ? null : roundDistanceKm(meters),
       relationship,
       conversationId: relation?.conversation_id ? String(relation.conversation_id) : null,
+      rating: {
+        average: ratingRow?.avg_rating ? Number(ratingRow.avg_rating) : 0,
+        count: ratingRow?.count_rating ? Number(ratingRow.count_rating) : 0,
+      },
     });
   });
 }

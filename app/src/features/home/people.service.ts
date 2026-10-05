@@ -24,12 +24,17 @@ export type OnlinePerson = {
   bio: string | null;
   mediaId: string | null;
   online: boolean;
+  onCall?: boolean;
   interests: string[];
   sharedInterests: string[];
   rates: CommunicationRates;
   distanceKm: number | null;
   relationship: PersonRelationship;
   conversationId: string | null;
+  rating?: {
+    average: number;
+    count: number;
+  } | null;
 };
 
 export type DiscoveryQuery = {

@@ -1,4 +1,5 @@
 import { Pressable, View } from 'react-native';
+import { Star } from 'lucide-react-native';
 
 import { AppText } from '@/components/design-system/AppText';
 import { OnlineStatus } from '@/components/home/OnlineStatus';
@@ -27,7 +28,20 @@ export function OnlinePersonCard({ person, onPress }: OnlinePersonCardProps) {
       </View>
       <View className="gap-sm p-md">
         <View className="gap-xs">
-          <AppText variant="h3">{person.name}</AppText>
+          <View className="flex-row items-center justify-between">
+            <AppText variant="h3">{person.name}</AppText>
+            {person.rating && person.rating.count > 0 ? (
+              <View className="flex-row items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5">
+                <Star size={13} color="#F59E0B" fill="#F59E0B" />
+                <AppText variant="caption" className="font-semibold text-amber-500">
+                  {person.rating.average.toFixed(1)}
+                </AppText>
+                <AppText variant="caption" tone="muted" className="text-[10px]">
+                  ({person.rating.count})
+                </AppText>
+              </View>
+            ) : null}
+          </View>
           <OnlineStatus online={person.online} onCall={person.onCall} />
           {distance ? <AppText variant="caption" tone="muted">{distance}</AppText> : null}
         </View>

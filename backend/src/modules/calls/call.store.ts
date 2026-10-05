@@ -15,6 +15,7 @@ export type CallRecord = {
   endedAt: Date | null;
   durationSeconds: number;
   createdAt: Date;
+  callerName?: string | null;
 };
 
 type CallRow = {
@@ -72,6 +73,7 @@ function mapCall(row: CallRow): CallRecord {
     endedAt: row.ended_at,
     durationSeconds: Number(row.duration_seconds),
     createdAt: row.created_at,
+    callerName: (row as { caller_name?: string }).caller_name ? String((row as { caller_name?: string }).caller_name).trim() : null,
   };
 }
 
@@ -202,10 +204,14 @@ export class PgCallStore {
   }
 
   async incoming(userId: string): Promise<CallRecord | null> {
-    const result = await this.pool.query<CallRow>(
-      `SELECT ${CALL_COLUMNS} FROM acc.t_calls
-       WHERE receiver_id = $1 AND status = 'RINGING'
-       ORDER BY created_at DESC LIMIT 1`,
+    const result = await this.pool.query<CallRow & { caller_name?: string }>(
+      `SELECT c.id, c.conversation_id, c.caller_id, c.receiver_id, c.call_type, c.status,
+              c.rate_snapshot, c.room_name, c.connected_at, c.ended_at, c.duration_seconds, c.created_at,
+              pr.display_name AS caller_name
+       FROM acc.t_calls c
+       LEFT JOIN acc.m_profiles pr ON pr.user_id = c.caller_id
+       WHERE c.receiver_id = $1 AND c.status = 'RINGING'
+       ORDER BY c.created_at DESC LIMIT 1`,
       [userId],
     );
     return result.rows[0] ? mapCall(result.rows[0]) : null;

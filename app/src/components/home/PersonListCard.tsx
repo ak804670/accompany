@@ -1,4 +1,5 @@
 import { Pressable, View } from 'react-native';
+import { Star } from 'lucide-react-native';
 
 import { AppText } from '@/components/design-system/AppText';
 import { PersonAvatar } from '@/components/home/PersonAvatar';
@@ -40,7 +41,20 @@ export function PersonListCard({ person, onPress }: PersonListCardProps) {
         </View>
       </View>
       <View className="flex-1 justify-center gap-1">
-        <AppText variant="h3" numberOfLines={1}>{person.name}</AppText>
+        <View className="flex-row items-center justify-between">
+          <AppText variant="h3" numberOfLines={1} className="flex-1 pr-1">{person.name}</AppText>
+          {person.rating && person.rating.count > 0 ? (
+            <View className="flex-row items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5">
+              <Star size={12} color="#F59E0B" fill="#F59E0B" />
+              <AppText variant="caption" className="text-[11px] font-semibold text-amber-500">
+                {person.rating.average.toFixed(1)}
+              </AppText>
+              <AppText variant="caption" tone="muted" className="text-[10px]">
+                ({person.rating.count})
+              </AppText>
+            </View>
+          ) : null}
+        </View>
         {subtitle ? (
           <AppText variant="bodyS" tone="muted" numberOfLines={1}>
             {subtitle}

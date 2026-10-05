@@ -9,6 +9,7 @@ import { createInterestRouter, createProfileRouter } from './modules/profile/pro
 import { createConversationRouter } from './modules/shell/conversations.routes.js';
 import { createShellRouter } from './modules/shell/people.routes.js';
 import { createAuthRouter } from './modules/auth/auth.routes.js';
+import { createRatingRouter } from './modules/ratings/rating.routes.js';
 import { createCommunicationWebhookRouter } from './modules/communications/webhooks/routes.js';
 import type { MediaStorage } from './modules/profile/media-storage.js';
 import type { AuditEntry } from './modules/audit/audit-log.js';
@@ -86,6 +87,7 @@ export function createApp(deps: AppDependencies) {
   if (deps.pool) {
     app.use('/v1', createShellRouter(deps.authService, deps.pool, deps.media));
     app.use('/v1/conversations', createConversationRouter(deps.authService, deps.pool));
+    app.use('/v1', createRatingRouter(deps.authService, deps.pool));
   }
   if (deps.profileService) {
     app.use('/v1/profile', createProfileRouter(deps.profileService));

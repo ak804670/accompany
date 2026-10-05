@@ -10,6 +10,7 @@ export type ConversationSummary = {
   updatedAt: string | null;
   unreadCount: number;
   online: boolean;
+  onCall?: boolean;
   status: ConversationStatus;
   incoming: boolean;
   blocked?: boolean;
