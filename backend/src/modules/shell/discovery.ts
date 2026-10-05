@@ -19,6 +19,11 @@ export type PublicRates = {
   video: number | null;
 };
 
+export type PublicRatingSummary = {
+  average: number;
+  count: number;
+};
+
 export type PublicPerson = {
   userId: string;
   name: string;
@@ -32,6 +37,7 @@ export type PublicPerson = {
   distanceKm: number | null;
   relationship: PersonRelationship;
   conversationId: string | null;
+  rating?: PublicRatingSummary;
 };
 
 export type PersonRelationship =
@@ -86,6 +92,7 @@ export function toPublicPerson(row: Record<string, unknown>, extras: {
   distanceKm: number | null;
   relationship: PersonRelationship;
   conversationId: string | null;
+  rating?: PublicRatingSummary;
 }): PublicPerson {
   const person: PublicPerson = {
     userId: String(row.user_id),
@@ -100,6 +107,7 @@ export function toPublicPerson(row: Record<string, unknown>, extras: {
     distanceKm: extras.distanceKm,
     relationship: extras.relationship,
     conversationId: extras.conversationId,
+    rating: extras.rating ?? { average: 0, count: 0 },
   };
   for (const key of Object.keys(person)) {
     if (coordinateKey.test(key)) {

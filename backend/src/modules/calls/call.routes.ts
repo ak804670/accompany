@@ -15,7 +15,7 @@ function bearer(header: string | undefined): string {
   return token;
 }
 
-function publicCall(call: { id: string; callType: string; status: string; roomName: string; rateSnapshot: number; createdAt: Date; callerId: string; receiverId: string; durationSeconds?: number; conversationId?: string | null; endedAt?: Date | null }) {
+function publicCall(call: { id: string; callType: string; status: string; roomName: string; rateSnapshot: number; createdAt: Date; callerId: string; receiverId: string; durationSeconds?: number; conversationId?: string | null; endedAt?: Date | null; callerName?: string | null }) {
   return {
     id: call.id,
     callType: call.callType,
@@ -28,6 +28,7 @@ function publicCall(call: { id: string; callType: string; status: string; roomNa
     durationSeconds: call.durationSeconds ?? 0,
     conversationId: call.conversationId ?? null,
     endedAt: call.endedAt ?? null,
+    callerName: (call as { callerName?: string | null }).callerName ?? null,
   };
 }
 
@@ -120,6 +121,20 @@ export function createCallRouter(auth: AuthService, calls: CallService, store: P
       const id = await userId(request.header('authorization'));
       const call = await calls.incoming(id);
       response.json({ call: call ? publicCall(call) : null });
+    } catch (error) {
+      sendCallError(error, response, next);
+    }
+  });
+
+  router.get('/calls/:id', async (request, response, next) => {
+    try {
+      const id = await userId(request.header('authorization'));
+      const call = await store.get(request.params.id);
+      if (!call || (call.callerId !== id && call.receiverId !== id)) {
+        response.status(404).json({ error: { code: 'NOT_FOUND', message: 'Call not found.' } });
+        return;
+      }
+      response.json({ call: publicCall(call) });
     } catch (error) {
       sendCallError(error, response, next);
     }

@@ -6,6 +6,7 @@ import { CallControls } from '@/features/calls/components/CallControls';
 import { CallHeader } from '@/features/calls/components/CallHeader';
 import { RingingView } from '@/features/calls/components/RingingView';
 import { VideoCallView } from '@/features/calls/components/VideoCallView';
+import { callService } from '@/features/calls/call.service';
 import { callManager, type ActiveCall } from '@/features/calls/call-manager';
 
 function useActiveCall(): ActiveCall | null {
@@ -33,6 +34,30 @@ export function ActiveCallScreen() {
     const timer = setInterval(update, 1000);
     return () => clearInterval(timer);
   }, [call?.phase, call?.startedAt]);
+
+  useEffect(() => {
+    if (!call?.id || call.phase !== 'CONNECTED') return;
+    const callId = call.id;
+    let active = true;
+
+    const pollStatus = () => {
+      void callService
+        .get(callId)
+        .then((callData) => {
+          if (!active) return;
+          if (callData?.status && callData.status !== 'CONNECTED' && callData.status !== 'CONNECTING') {
+            callManager.syncRemote(callData.status);
+          }
+        })
+        .catch(() => undefined);
+    };
+
+    const interval = setInterval(pollStatus, 2500);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [call?.id, call?.phase]);
 
   if (
     !call ||

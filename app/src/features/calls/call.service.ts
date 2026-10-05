@@ -9,10 +9,13 @@ export type CallSession = {
   token?: string;
   url?: string;
   name: string;
+  callerId?: string;
+  receiverId?: string;
+  callerName?: string | null;
 };
 
 type CallResponse = {
-  call: Omit<CallSession, 'token' | 'url' | 'name'>;
+  call: Omit<CallSession, 'token' | 'url' | 'name'> & { callerName?: string | null; callerId?: string; receiverId?: string };
   token?: string;
   url?: string;
 };
@@ -20,6 +23,11 @@ type CallResponse = {
 export const callService = {
   async start(personId: string, kind: 'audio' | 'video', conversationId?: string | null): Promise<CallResponse> {
     return apiClient.post<CallResponse>('/v1/calls', { personId, kind, conversationId });
+  },
+
+  async get(callId: string): Promise<CallResponse['call']> {
+    const result = await apiClient.get<{ call: CallResponse['call'] }>(`/v1/calls/${callId}`);
+    return result.call;
   },
 
   async incoming(): Promise<CallResponse['call'] | null> {

@@ -21,10 +21,17 @@ export type ActiveCall = {
   startedAt?: number | null;
 };
 
+export type PendingRating = {
+  callId: string;
+  userId: string;
+  name: string;
+};
+
 type Listeners = Set<() => void>;
 
 export class CallManager {
   private current: ActiveCall | null = null;
+  private pendingRating: PendingRating | null = null;
   private ending: Promise<void> | null = null;
   private readonly listeners: Listeners = new Set();
   private unsubscribeNative: (() => void) | null = null;
@@ -55,6 +62,20 @@ export class CallManager {
 
   getCurrentCall(): ActiveCall | null {
     return this.current;
+  }
+
+  getPendingRating(): PendingRating | null {
+    return this.pendingRating;
+  }
+
+  setPendingRating(rating: PendingRating | null): void {
+    this.pendingRating = rating;
+    this.listeners.forEach((listener) => listener());
+  }
+
+  clearPendingRating(): void {
+    this.pendingRating = null;
+    this.listeners.forEach((listener) => listener());
   }
 
   getMedia(): LiveKitSession | null {
@@ -218,9 +239,20 @@ export class CallManager {
     const phase = phaseFromStatus(status);
     if (!isTerminal(phase) && phase !== 'CONNECTED' && phase !== 'CONNECTING') return;
     if (isTerminal(phase)) {
+      const call = this.current;
+      const wasConnected = call.phase === 'CONNECTED' || Boolean(call.startedAt);
+      const ratedUserId = call.userId;
+      const ratedName = call.name;
+      const callId = call.id;
+
       this.platform.dismiss(this.current.id);
       this.media.disconnect(this.current.id);
       this.clear(this.current.id);
+
+      if (wasConnected && ratedUserId) {
+        this.pendingRating = { callId, userId: ratedUserId, name: ratedName };
+        this.listeners.forEach((listener) => listener());
+      }
       return;
     }
     if (phase === 'CONNECTED' && this.current.phase !== 'CONNECTED') {
@@ -230,6 +262,11 @@ export class CallManager {
   }
 
   private async finish(call: ActiveCall, kind: 'END' | 'CANCELLED'): Promise<void> {
+    const wasConnected = call.phase === 'CONNECTED' || Boolean(call.startedAt);
+    const ratedUserId = call.userId;
+    const ratedName = call.name;
+    const callId = call.id;
+
     this.replace({ ...call, phase: 'ENDING' });
     this.platform.dismiss(call.id);
     this.media.disconnect(call.id);
@@ -241,6 +278,10 @@ export class CallManager {
     } finally {
       this.replace({ ...call, phase: 'ENDED' });
       this.clear(call.id);
+      if (wasConnected && ratedUserId && kind !== 'CANCELLED') {
+        this.pendingRating = { callId, userId: ratedUserId, name: ratedName };
+        this.listeners.forEach((listener) => listener());
+      }
       this.ending = null;
     }
   }

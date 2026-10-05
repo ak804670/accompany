@@ -10,6 +10,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 
 import { ActiveCallScreen } from '@/features/calls/ActiveCallScreen';
+import { CallRatingDialog } from '@/features/calls/components/CallRatingDialog';
 import { callManager } from '@/features/calls/call-manager';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -60,6 +61,7 @@ export function App() {
             <ProfileProvider>
             <RootNavigator />
             <ActiveCallScreen />
+            <CallRatingDialog />
             <AppToastHost />
             <PortalHost />
             </ProfileProvider>
