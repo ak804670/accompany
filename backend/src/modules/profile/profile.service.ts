@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 
 import type { AuthService } from '../auth/auth.service.js';
 import { advanceStep, isComplete } from './profile.completion.js';
@@ -13,8 +13,17 @@ import { logger } from '../../utils/logger.js';
 const defaultMediaLimits = { maxBytes: 4_000_000, maxPhotos: 10 };
 
 function withComplete(profile: ProfileRecord): ProfileRecord {
-  const anonymousComplete = profile.accountIntent === 'anonymous' && profile.profileStatus === 'hidden' && Boolean(profile.displayName && profile.dateOfBirth);
+  const anonymousComplete = profile.accountIntent === 'anonymous' && profile.profileStatus === 'hidden' && profile.step === 'complete' && Boolean(profile.displayName && profile.dateOfBirth);
   return { ...profile, complete: anonymousComplete || (profile.profileStatus === 'active' && isComplete(profile)) };
+}
+
+const aliasFirstWords = ['Calm', 'Kind', 'Bright', 'Gentle', 'Quiet', 'Sunny', 'Brave', 'Clever'];
+const aliasSecondWords = ['Fox', 'Owl', 'River', 'Maple', 'Robin', 'Willow', 'Panda', 'Dove'];
+
+function randomAnonymousAlias(): string {
+  const first = aliasFirstWords[randomInt(aliasFirstWords.length)]!;
+  const second = aliasSecondWords[randomInt(aliasSecondWords.length)]!;
+  return `${first}${second}${String(randomInt(10_000)).padStart(4, '0')}`;
 }
 
 export class ProfileService {
@@ -63,7 +72,7 @@ export class ProfileService {
     const saved = await this.repository.saveProfile(userId, {
       displayName: parsed.displayName,
       dateOfBirth: parsed.dateOfBirth,
-      step: advanceStep(current?.step ?? 'basics', 'basics'),
+      step: current?.accountIntent === 'anonymous' ? 'preferences' : advanceStep(current?.step ?? 'basics', 'basics'),
     });
     return withComplete(saved);
   }
@@ -79,10 +88,11 @@ export class ProfileService {
       throw new ProfileError('PROFILE_NOT_FOUND', 404, 'Create your profile first.');
     }
     let step: OnboardingStep | undefined;
-    if (parsed.bio !== undefined) {
+    if (current.accountIntent === 'anonymous' && parsed.languagePreferences !== undefined) {
+      step = current.step === 'complete' ? 'complete' : 'review';
+    } else if (parsed.bio !== undefined) {
       step = advanceStep(current.step, 'about');
-    }
-    if (parsed.languagePreferences !== undefined) {
+    } else if (parsed.languagePreferences !== undefined) {
       step = advanceStep(step ?? current.step, 'preferences');
     }
     const saved = await this.repository.saveProfile(userId, { ...parsed, step });
@@ -207,11 +217,18 @@ export class ProfileService {
     const current = await this.get(userId);
     await this.repository.ensureUser(userId);
     if (intent === 'anonymous') {
-      const saved = await this.repository.saveProfile(userId, { accountIntent: intent, supportRole: null, expertSubject: null, verificationStatus: 'none', verificationNote: null, profileStatus: 'hidden', step: current.displayName && current.dateOfBirth ? 'complete' : 'basics' });
+      const alreadyAnonymous = current.accountIntent === 'anonymous';
+      const displayName = alreadyAnonymous && current.displayName?.trim() ? current.displayName : randomAnonymousAlias();
+      const finished = current.complete && Boolean(current.dateOfBirth);
+      const step: OnboardingStep = finished ? 'complete' : current.dateOfBirth ? 'preferences' : 'basics';
+      const saved = await this.repository.saveProfile(userId, { displayName, accountIntent: intent, supportRole: null, expertSubject: null, verificationStatus: 'none', verificationNote: null, profileStatus: 'hidden', step });
       return withComplete(saved);
     }
+    if (!current.id || !current.displayName?.trim() || !current.dateOfBirth) {
+      throw new ProfileError('PROFILE_INCOMPLETE', 400, 'Add your name and date of birth before choosing a support role.');
+    }
     const rates = await this.repository.getRates(userId);
-    const ready = isComplete(current) && Boolean(rates.chat || rates.audio || rates.video);
+    const ready = Boolean(current.supportRole) && isComplete(current) && Boolean(rates.chat || rates.audio || rates.video);
     return withComplete(await this.repository.saveProfile(userId, { accountIntent: intent, profileStatus: ready ? 'active' : 'incomplete', step: ready ? 'complete' : 'role' }));
   }
 
@@ -223,6 +240,9 @@ export class ProfileService {
     const subject = role === 'expert' && typeof input.expertSubject === 'string' ? input.expertSubject.trim() : null;
     if (role === 'expert' && (!subject || subject.length > 80)) throw new ProfileError('VALIDATION_ERROR', 400, 'Enter the expert subject.');
     const current = await this.get(userId);
+    if (!current.id || !current.displayName?.trim() || !current.dateOfBirth) {
+      throw new ProfileError('PROFILE_INCOMPLETE', 400, 'Add your name and date of birth before choosing a support role.');
+    }
     const changed = current.supportRole !== role || current.expertSubject !== subject;
     const rates = await this.repository.getRates(userId);
     const ready = isComplete(current) && Boolean(rates.chat || rates.audio || rates.video);
@@ -230,7 +250,7 @@ export class ProfileService {
       accountIntent: 'provider', supportRole: role, expertSubject: subject,
       verificationStatus: role === 'friendly' ? 'none' : changed ? 'none' : current.verificationStatus,
       verificationNote: changed || role === 'friendly' ? null : current.verificationNote,
-      profileStatus: ready ? 'active' : 'incomplete', step: ready ? 'complete' : role === 'friendly' ? 'basics' : 'certificate',
+      profileStatus: ready ? 'active' : 'incomplete', step: ready ? 'complete' : role === 'friendly' ? 'gender' : 'certificate',
     });
     return withComplete(saved);
   }

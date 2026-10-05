@@ -27,7 +27,7 @@ describe('profile service', () => {
     const created = await profile.saveBasics('user-1', { displayName: '  Anish ', dateOfBirth: '1998-04-02' });
     assert.equal(created.displayName, 'Anish');
     assert.equal(created.complete, false);
-    assert.equal(created.step, 'photo');
+    assert.equal(created.step, 'gender');
 
     await assert.rejects(() => profile.complete('user-1'), (error: unknown) => {
       assert.ok(error instanceof ProfileError);
@@ -43,6 +43,7 @@ describe('profile service', () => {
     assert.equal(interests.interests[0]?.slug, 'technology');
     const languages = await profile.update('user-1', { languagePreferences: ['en'] });
     assert.deepEqual(languages.languagePreferences, ['en']);
+    await profile.saveRates('user-1', { chat: 10 });
     const done = await profile.complete('user-1');
     assert.equal(done.complete, true);
     assert.equal(done.step, 'complete');
@@ -76,6 +77,52 @@ describe('profile service', () => {
       assert.equal(error.status, 403);
       return true;
     });
+  });
+
+  it('assigns a readable private alias before anonymous basics and completes only after review', async () => {
+    const { profile, repository } = service();
+    const started = await profile.setIntent('user-1', { intent: 'anonymous' });
+    assert.match(started.displayName ?? '', /^(Calm|Kind|Bright|Gentle|Quiet|Sunny|Brave|Clever)(Fox|Owl|River|Maple|Robin|Willow|Panda|Dove)\d{4}$/);
+    assert.equal(started.profileStatus, 'hidden');
+    assert.equal(started.step, 'basics');
+    assert.equal(started.complete, false);
+    assert.equal(repository.profiles.get('user-1')?.displayName, started.displayName);
+
+    const basics = await profile.saveBasics('user-1', { displayName: 'QuietOwl1234', dateOfBirth: '1998-04-02' });
+    assert.equal(basics.displayName, 'QuietOwl1234');
+    assert.equal(basics.step, 'preferences');
+    const languages = await profile.update('user-1', { languagePreferences: ['en'] });
+    assert.equal(languages.step, 'review');
+    assert.equal(languages.complete, false);
+
+    const done = await profile.complete('user-1');
+    assert.equal(done.profileStatus, 'hidden');
+    assert.equal(done.step, 'complete');
+    assert.equal(done.complete, true);
+  });
+
+  it('does not retain a listed name when switching an account to anonymous', async () => {
+    const { profile } = service();
+    await profile.saveBasics('user-1', { displayName: 'Real Listed Name', dateOfBirth: '1998-04-02' });
+    const anonymous = await profile.setIntent('user-1', { intent: 'anonymous' });
+    assert.notEqual(anonymous.displayName, 'Real Listed Name');
+    assert.match(anonymous.displayName ?? '', /\d{4}$/);
+    assert.equal(anonymous.profileStatus, 'hidden');
+  });
+
+  it('requires a non-empty name before provider intent or role can be persisted', async () => {
+    const { profile, repository } = service();
+    await assert.rejects(() => profile.setIntent('user-1', { intent: 'provider' }), (error: unknown) => {
+      assert.ok(error instanceof ProfileError);
+      assert.equal(error.code, 'PROFILE_INCOMPLETE');
+      return true;
+    });
+    await assert.rejects(() => profile.setRole('user-1', { role: 'friendly' }), (error: unknown) => {
+      assert.ok(error instanceof ProfileError);
+      assert.equal(error.code, 'PROFILE_INCOMPLETE');
+      return true;
+    });
+    assert.equal(repository.profiles.has('user-1'), false);
   });
 
   it('requires a session', async () => {

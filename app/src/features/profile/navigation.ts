@@ -3,7 +3,7 @@ export type OnboardingStackParamList = {
   Role: undefined;
   Certificate: undefined;
   Rates: undefined;
-  Basics: undefined;
+  Basics: { intent?: 'anonymous' | 'provider' } | undefined;
   Gender: undefined;
   Location: undefined;
   Photo: undefined;

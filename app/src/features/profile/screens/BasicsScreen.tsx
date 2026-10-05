@@ -35,9 +35,10 @@ function label(date: Date): string {
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export function BasicsScreen({ navigation }: Props) {
+export function BasicsScreen({ navigation, route }: Props) {
   const { profile, setProfile } = useProfile();
-  const [name, setName] = useState(profile?.displayName ?? '');
+  const requireProviderName = route.params?.intent === 'provider' && profile?.accountIntent === 'anonymous';
+  const [name, setName] = useState(requireProviderName ? '' : profile?.displayName ?? '');
   const [date, setDate] = useState<Date | null>(profile?.dateOfBirth ? fromIso(profile.dateOfBirth) : null);
   const [showPicker, setShowPicker] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +46,7 @@ export function BasicsScreen({ navigation }: Props) {
   const latestAdultDate = adultCutoff();
 
   useEffect(() => {
-    if (profile?.displayName) {
+    if (profile?.displayName || route.params?.intent === 'provider') {
       return;
     }
     preferencesStorage.get('onboarding.displayName').then((saved) => {
@@ -53,7 +54,7 @@ export function BasicsScreen({ navigation }: Props) {
         setName(saved);
       }
     }).catch(() => undefined);
-  }, [profile?.displayName]);
+  }, [profile?.displayName, route.params?.intent]);
 
   const trimmed = name.trim();
   const nameError = trimmed.length === 0 ? 'Enter the name people should use.' : trimmed.length > 80 ? 'Use 80 characters or fewer.' : null;
@@ -87,8 +88,14 @@ export function BasicsScreen({ navigation }: Props) {
     try {
       const saved = await profileService.saveBasics(trimmed, toIso(date));
       await preferencesStorage.remove('onboarding.displayName');
-      setProfile(saved);
-      navigation.navigate(saved.accountIntent === 'anonymous' ? 'Preferences' : 'Gender');
+      if (route.params?.intent === 'provider') {
+        const provider = await profileService.setIntent('provider');
+        setProfile(provider);
+        navigation.navigate('Role');
+      } else {
+        setProfile(saved);
+        navigation.navigate(saved.accountIntent === 'anonymous' ? 'Preferences' : 'Gender');
+      }
     } catch (caught) {
       setError(profileService.failureMessage(caught));
     } finally {
@@ -99,8 +106,8 @@ export function BasicsScreen({ navigation }: Props) {
   return (
     <OnboardingFrame
       step={0}
-      title={profile?.accountIntent === 'anonymous' ? 'Choose your in-call alias' : 'What should people call you?'}
-      subtitle={profile?.accountIntent === 'anonymous' ? 'Your alias is only shown in calls.' : 'Your name and date of birth stay on your profile.'}
+      title={profile?.accountIntent === 'anonymous' ? 'Choose your alias' : 'What should people call you?'}
+      subtitle={profile?.accountIntent === 'anonymous' ? 'This alias replaces your name in the app and may be heard in calls. Keep it or edit it.' : 'Your name is shown on your public profile.'}
       onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
       onContinue={() => void continueNext()}
       loading={loading}

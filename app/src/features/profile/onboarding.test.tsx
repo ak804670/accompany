@@ -42,6 +42,7 @@ jest.mock('@/features/profile/services/prepare-image', () => ({
 jest.mock('@/features/profile/services/profile.service', () => ({
   profileService: {
     get: jest.fn(),
+    setIntent: jest.fn(),
     saveBasics: jest.fn(),
     update: jest.fn(),
     interests: jest.fn(),
@@ -96,6 +97,26 @@ describe('profile onboarding', () => {
     service.get.mockResolvedValue(profile({ step: 'about' }));
     await renderGate();
     expect(await screen.findByText('About you')).toBeOnTheScreen();
+  });
+
+  it('shows an automatically assigned anonymous alias as an editable name', async () => {
+    service.get.mockResolvedValue(profile({ id: null, displayName: null, dateOfBirth: null, step: 'intent' }));
+    service.setIntent.mockResolvedValue(profile({ accountIntent: 'anonymous', displayName: 'CalmFox4821', dateOfBirth: null, step: 'basics' }));
+    await renderGate();
+    await userEvent.press(await screen.findByRole('button', { name: 'I’m here to listen' }));
+    expect(service.setIntent).toHaveBeenCalledWith('anonymous');
+    expect(await screen.findByText('Choose your alias')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Display name').props.value).toBe('CalmFox4821');
+    expect(screen.getByText(/may be heard in calls/)).toBeOnTheScreen();
+  });
+
+  it('collects provider name and date of birth before saving provider intent', async () => {
+    service.get.mockResolvedValue(profile({ id: null, displayName: null, dateOfBirth: null, step: 'intent' }));
+    await renderGate();
+    await userEvent.press(await screen.findByRole('button', { name: 'I want to provide support' }));
+    expect(await screen.findByText('What should people call you?')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Display name').props.value).toBe('');
+    expect(service.setIntent).not.toHaveBeenCalled();
   });
 
   it('opens home when the profile is complete', async () => {

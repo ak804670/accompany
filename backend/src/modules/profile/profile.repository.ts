@@ -4,7 +4,7 @@ import { interestSlug, normalizeInterestName } from '../shell/interest-names.js'
 import type { Interest, OnboardingStep, ProfileMedia, ProfileRecord, StoredMedia } from './profile.types.js';
 
 export type ProfileWrite = {
-  displayName?: string | null;
+  displayName?: string;
   dateOfBirth?: string | null;
   bio?: string | null;
   languagePreferences?: string[];
@@ -135,6 +135,9 @@ export class PgProfileRepository implements ProfileRepository {
       values,
     );
     if (updated.rowCount === 0) {
+      if (!write.displayName?.trim()) {
+        throw new Error('profile-name-required');
+      }
       await this.pool.query(
         `INSERT INTO acc.m_profiles (user_id, display_name, date_of_birth, bio, language_preferences, profile_status, onboarding_step, account_intent, support_role, expert_subject, verification_status, verification_note)
          VALUES ($1, btrim($2), $3, $4, COALESCE($5::text[], '{}'), COALESCE($6, 'incomplete'), COALESCE($7, 'intent'), COALESCE($8, 'provider'), $9, $10, COALESCE($11, 'none'), $12)`,

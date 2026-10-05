@@ -27,6 +27,9 @@ export class MemoryProfileRepository implements ProfileRepository {
 
   async saveProfile(userId: string, write: ProfileWrite): Promise<ProfileRecord> {
     const current = this.profiles.get(userId);
+    if (!current && !write.displayName?.trim()) {
+      throw new Error('profile-name-required');
+    }
     const next: ProfileRecord = {
       id: current?.id ?? randomUUID(),
       userId,
