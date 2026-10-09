@@ -9,6 +9,12 @@ web-build/
 # Native
 ios/
 android/
+# Native source for the local Expo call module is application code, unlike generated platform projects.
+!app/modules/accompany-calls/android/
+!app/modules/accompany-calls/android/**
+app/modules/accompany-calls/android/build/
+!app/modules/accompany-calls/ios/
+!app/modules/accompany-calls/ios/**
 *.orig.*
 *.jks
 *.p8

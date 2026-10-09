@@ -106,7 +106,14 @@ export class CallManager {
       remoteCameraEnabled: true,
       startedAt: null,
     });
-    if (input.media) this.media.connect(input.media);
+    if (input.media) {
+      void this.media.connect(input.media).catch(() => {
+        if (this.current?.id !== input.id) return;
+        this.platform.dismiss(input.id);
+        this.replace({ ...this.current, phase: 'FAILED' });
+        void callService.end(input.id).catch(() => undefined);
+      });
+    }
     this.platform.showOutgoing({ id: input.id, name: input.name, video: input.video, outgoing: true });
   }
 
@@ -146,24 +153,23 @@ export class CallManager {
     const next = reduceCall(call.phase, 'answer');
     if (next === call.phase) return;
     this.replace({ ...call, phase: next });
-    let result;
     try {
-      result = await callService.accept(callId);
+      const result = await callService.accept(callId);
+      if (!result.token || !result.url) throw new Error('Call media credentials are missing');
+      await this.media.connect({ callId, url: result.url, token: result.token, roomName: result.call.roomName });
+      this.replace({
+        ...call,
+        phase: 'CONNECTED',
+        startedAt: Date.now(),
+        rate: result.call.rate ?? call.rate,
+      });
+      this.platform.showConnected({ id: call.id, name: call.name, video: call.video, outgoing: false });
     } catch {
       this.replace({ ...call, phase: 'FAILED' });
       this.platform.dismiss(callId);
-      return;
+      this.media.disconnect(callId);
+      await callService.end(callId).catch(() => undefined);
     }
-    if (result.token && result.url) {
-      this.media.connect({ callId, url: result.url, token: result.token, roomName: result.call.roomName });
-    }
-    this.replace({
-      ...call,
-      phase: 'CONNECTED',
-      startedAt: Date.now(),
-      rate: result.call.rate ?? call.rate,
-    });
-    this.platform.showConnected({ id: call.id, name: call.name, video: call.video, outgoing: false });
   }
 
   async rejectCall(callId: string): Promise<void> {
@@ -206,6 +212,7 @@ export class CallManager {
 
   mute(muted: boolean): void {
     if (!this.current) return;
+    this.media.setMuted(muted);
     this.replace({ ...this.current, muted });
   }
 
@@ -216,6 +223,7 @@ export class CallManager {
 
   toggleSpeaker(): void {
     if (!this.current) return;
+    this.media.setSpeakerOn(!this.current.speakerOn);
     this.replace({ ...this.current, speakerOn: !this.current.speakerOn });
   }
 

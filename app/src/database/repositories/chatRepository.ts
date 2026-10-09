@@ -183,6 +183,13 @@ export const chatRepository = {
     }
   },
 
+  async markRead(ownerUserId: string, conversationId: string): Promise<void> {
+    const remembered = conversations.get(key(ownerUserId, conversationId));
+    if (remembered) conversations.set(key(ownerUserId, conversationId), { ...remembered, unreadCount: 0 });
+    const db = await openDatabase();
+    await db.run('UPDATE conversations SET unread_count = 0 WHERE owner_user_id = ? AND id = ?', [ownerUserId, conversationId]);
+  },
+
   async saveOne(ownerUserId: string, conversation: StoredConversation): Promise<void> {
     await upsert(ownerUserId, conversation);
   },

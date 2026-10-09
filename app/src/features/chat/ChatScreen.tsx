@@ -78,6 +78,7 @@ export function ChatScreen({ conversationId, name, personId, online, onCall, hig
   const [confirm, setConfirm] = useState<'block' | 'unblock' | null>(null);
   const [freshId, setFreshId] = useState<string | null>(null);
   const openedConversation = useRef(conversationId);
+  const callRequestInFlight = useRef(false);
   if (openedConversation.current !== conversationId) {
     const nextMessages = user?.id ? messageRepository.peek(user.id, conversationId) : null;
     const nextConversation = user?.id ? chatRepository.peek(user.id, conversationId) : null;
@@ -164,7 +165,10 @@ export function ChatScreen({ conversationId, name, personId, online, onCall, hig
       setMessages((current) => mergeInitialMessages(current, result.messages));
       setCursor(result.nextCursor);
       setPhase('ready');
-      void chatService.markRead(id).catch(() => undefined);
+      void chatService.markRead(id).then(() => {
+        if (user?.id) void chatRepository.markRead(user.id, id).catch(() => undefined);
+        socketService.notify(ChatEvents.messageRead, { conversationId: id, messageIds: [] });
+      }).catch(() => undefined);
     }).catch((caught: unknown) => {
       if (ticket !== loadGeneration.current || silent) return;
       setError(caught instanceof ApiError && caught.status === 0 ? "You're offline" : 'Unable to load messages');
@@ -305,11 +309,17 @@ export function ChatScreen({ conversationId, name, personId, online, onCall, hig
   }, [conversationId, header.personId, phase]);
 
   async function startCall(kind: 'audio' | 'video') {
+    if (callRequestInFlight.current) return;
     if (!header.personId) return;
+    if (callManager.getCurrentCall()) {
+      setCallNotice('A call is already in progress.');
+      return;
+    }
     if (header.onCall) {
       setCallNotice(`${header.name} is currently on another call.`);
       return;
     }
+    callRequestInFlight.current = true;
     try {
       const response = await callService.start(header.personId, kind, conversationId);
       const callData = response.call;
@@ -338,6 +348,8 @@ export function ChatScreen({ conversationId, name, personId, online, onCall, hig
     } catch (caught) {
       const body = caught instanceof ApiError && caught.body && typeof caught.body === 'object' ? caught.body as { error?: { message?: string } } : null;
       setCallNotice(body?.error?.message || "Couldn't start the call.");
+    } finally {
+      callRequestInFlight.current = false;
     }
   }
 

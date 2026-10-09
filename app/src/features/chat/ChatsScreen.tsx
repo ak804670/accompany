@@ -15,6 +15,7 @@ import { useSession } from '@/features/auth';
 import { CallsTab } from '@/features/chat/CallsTab';
 import { chatService, type ConversationSummary } from '@/features/chat/chat.service';
 import { ApiError } from '@/services/api';
+import { subscribeRealtime } from '@/services/realtime/socket';
 
 type ChatsScreenProps = {
   onOpen: (item: ConversationSummary, highlightCallId?: string) => void;
@@ -51,6 +52,8 @@ export function ChatsScreen({ onOpen }: ChatsScreenProps) {
       setError(!(caught instanceof ApiError) || caught.status === 0 ? "You're offline" : "We couldn't load chats right now.");
     }
   }, [user?.id]);
+
+  useEffect(() => subscribeRealtime(() => { void load(null, true); }), [load]);
 
   useEffect(() => {
     let active = true;

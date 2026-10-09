@@ -139,6 +139,10 @@ export const socketService = {
       socket?.off(event, handler);
     };
   },
+
+  notify(event: string, payload: unknown): void {
+    for (const handler of handlers.get(event) ?? []) handler(payload);
+  },
 };
 
 type LegacyListener = (event: { type: string }) => void;

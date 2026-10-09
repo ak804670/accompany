@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppBottomSheet } from '@/components/design-system/AppBottomSheet';
@@ -38,6 +38,12 @@ export function HomeScreen({ onOpenPerson, onOpenWallet }: HomeScreenProps) {
   const [coins, setCoins] = useState<number | null>(null);
   const [locationNote, setLocationNote] = useState<string | null>(null);
   const { people, index, setIndex, hasMore, loading, error, retry, refresh } = useDiscoveryDeck(distanceKm, interestIds);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function refreshPeople() {
+    setRefreshing(true);
+    try { await refresh(); } finally { setRefreshing(false); }
+  }
 
   useEffect(() => onDiscoveryRefresh(() => { void refresh(); }), [refresh]);
 
@@ -162,12 +168,18 @@ export function HomeScreen({ onOpenPerson, onOpenWallet }: HomeScreenProps) {
           </IllustratedState>
         </View>
       ) : viewMode === 'swipe' ? (
-        <View className="mt-xs min-h-0 flex-1">
-          <DiscoveryDeck people={people} index={index} hasMore={hasMore} filtered={distanceKm !== null || interestIds.length > 0} onIndex={setIndex} onOpen={onOpenPerson} onAdjustFilters={() => setFiltersOpen(true)} />
-        </View>
+        <ScrollView
+          className="mt-xs min-h-0 flex-1"
+          contentContainerStyle={{ flexGrow: 1 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refreshPeople()} />}
+        >
+          <View className="min-h-0 flex-1">
+            <DiscoveryDeck people={people} index={index} hasMore={hasMore} filtered={distanceKm !== null || interestIds.length > 0} onIndex={setIndex} onOpen={onOpenPerson} onAdjustFilters={() => setFiltersOpen(true)} />
+          </View>
+        </ScrollView>
       ) : (
         <View className="mt-xs min-h-0 flex-1">
-          <PersonListView people={people} filtered={distanceKm !== null || interestIds.length > 0} onOpen={onOpenPerson} onAdjustFilters={() => setFiltersOpen(true)} />
+          <PersonListView people={people} filtered={distanceKm !== null || interestIds.length > 0} onOpen={onOpenPerson} onAdjustFilters={() => setFiltersOpen(true)} refreshing={refreshing} onRefresh={() => void refreshPeople()} />
         </View>
       )}
       </View>

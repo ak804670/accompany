@@ -1,4 +1,4 @@
-import { FlatList, View } from 'react-native';
+import { FlatList, RefreshControl } from 'react-native';
 
 import { AppButton } from '@/components/design-system/AppButton';
 import { IllustratedState } from '@/components/illustrations/IllustratedState';
@@ -10,6 +10,8 @@ type PersonListViewProps = {
   onOpen: (userId: string) => void;
   onAdjustFilters?: () => void;
   filtered?: boolean;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 };
 
 export function PersonListView({
@@ -17,26 +19,9 @@ export function PersonListView({
   onOpen,
   onAdjustFilters,
   filtered = false,
+  refreshing = false,
+  onRefresh,
 }: PersonListViewProps) {
-  if (people.length === 0) {
-    return (
-      <View className="flex-1 justify-center">
-        <IllustratedState
-          name={filtered ? 'home-filtered' : 'home-empty'}
-          motion={filtered ? 'none' : 'float'}
-          title="No one new to show right now."
-          body="We'll let you know when more people are available."
-        >
-          {onAdjustFilters ? (
-            <AppButton variant="outline" onPress={onAdjustFilters}>
-              Adjust filters
-            </AppButton>
-          ) : null}
-        </IllustratedState>
-      </View>
-    );
-  }
-
   return (
     <FlatList
       data={people}
@@ -45,8 +30,19 @@ export function PersonListView({
         <PersonListCard person={item} onPress={() => onOpen(item.userId)} />
       )}
       contentContainerClassName="gap-sm pb-xl"
+      contentContainerStyle={people.length === 0 ? { flexGrow: 1, justifyContent: 'center' } : undefined}
+      refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined}
+      ListEmptyComponent={(
+        <IllustratedState
+          name={filtered ? 'home-filtered' : 'home-empty'}
+          motion={filtered ? 'none' : 'float'}
+          title="No one new to show right now."
+          body="We'll let you know when more people are available."
+        >
+          {onAdjustFilters ? <AppButton variant="outline" onPress={onAdjustFilters}>Adjust filters</AppButton> : null}
+        </IllustratedState>
+      )}
       showsVerticalScrollIndicator={false}
     />
   );
 }
-

@@ -9,7 +9,6 @@ import {
   PREFETCH_BATCH_SIZE,
   discoveryLog,
   mergeProfiles,
-  patchProfiles,
   shouldPrefetch,
 } from '@/features/home/discovery';
 import { peopleService, type OnlinePerson } from '@/features/home/people.service';
@@ -27,6 +26,7 @@ export function useDiscoveryDeck(distanceKm: number | null, interestIds: string[
   const cursorRef = useRef<string | null>(null);
   const fetchingMore = useRef(false);
   const failedCursor = useRef<string | null>(null);
+  const loadGeneration = useRef(0);
   const peopleRef = useRef(people);
   const indexRef = useRef(index);
   peopleRef.current = people;
@@ -42,6 +42,7 @@ export function useDiscoveryDeck(distanceKm: number | null, interestIds: string[
   }, []);
 
   const load = useCallback(async (mode: 'replace' | 'append' | 'refresh') => {
+    const generation = mode === 'append' ? loadGeneration.current : ++loadGeneration.current;
     if (mode === 'append') {
       if (fetchingMore.current || !cursorRef.current || failedCursor.current === cursorRef.current) return;
       fetchingMore.current = true;
@@ -54,6 +55,7 @@ export function useDiscoveryDeck(distanceKm: number | null, interestIds: string[
         distanceKm,
         interestIds,
       });
+      if (generation !== loadGeneration.current) return;
       const incoming = result.people;
       const persist = (peopleToStore: OnlinePerson[], nextCursor: string | null) => {
         if (!userId) return;
@@ -86,11 +88,18 @@ export function useDiscoveryDeck(distanceKm: number | null, interestIds: string[
         cursorRef.current = result.nextCursor;
         persist(merged, result.nextCursor);
         void warmImages(incoming, 0, false);
-      } else if (peopleRef.current.length > 0) {
-        const patched = patchProfiles(peopleRef.current, incoming);
-        setPeople(patched);
-        persist(patched, cursorRef.current);
-        discoveryLog('status patched', { incoming: incoming.length, index: indexRef.current });
+      } else {
+        // Refresh is a new snapshot. Replacing the first page lets newly online
+        // people appear and removes people who are no longer discoverable.
+        setPeople(incoming);
+        setIndex(0);
+        setCursor(result.nextCursor);
+        cursorRef.current = result.nextCursor;
+        peopleRef.current = incoming;
+        indexRef.current = 0;
+        persist(incoming, result.nextCursor);
+        void warmImages(incoming, 0, false);
+        discoveryLog('refreshed batch', { size: incoming.length, hasMore: result.nextCursor !== null });
       }
       failedCursor.current = null;
       setError(null);

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { UnreadBadge } from '@/components/chat/UnreadBadge';
@@ -16,6 +17,11 @@ function when(value: string | null): string {
 }
 
 export function ChatListItem({ item, onPress }: { item: ConversationSummary; onPress: () => void }) {
+  const [, setClock] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setClock((value) => value + 1), 30_000);
+    return () => clearInterval(timer);
+  }, []);
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={item.name} className="flex-row items-center gap-md py-md" onPress={onPress}>
       <PersonAvatar userId={item.personId} name={item.name} size={48} />

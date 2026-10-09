@@ -32,6 +32,7 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
   const { preference, setPreference } = useTheme();
   const [rates, setRates] = useState<{ chat: number | null; audio: number | null; video: number | null } | null>(null);
   const [locationName, setLocationName] = useState<string | null>(null);
+  const isAnonymous = profile?.accountIntent === 'anonymous';
   const name = profile?.displayName?.trim() || 'Your profile';
 
   useFocusEffect(useCallback(() => {
@@ -68,6 +69,7 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
         <AppText variant="h2">Profile</AppText>
       </View>
       <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-lg px-lg py-md pb-xl">
+      {!isAnonymous ? <>
       <View className="items-center gap-sm">
         <PersonAvatar userId={user?.id} name={name} size={96} />
         <AppText variant="h3">{name}</AppText>
@@ -86,14 +88,8 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
         </AppButton>
       </View>
       <ProfileSection title="Profile information">
-        <Info label="Account intent" value={profile?.accountIntent === 'anonymous' ? 'Anonymous listener' : 'Listed companion'} />
-        {profile?.accountIntent === 'provider' ? <Info label="Support role" value={`${profile.supportRole ?? 'Friendly'}${profile.supportRole === 'expert' && profile.expertSubject ? ` · ${profile.expertSubject}` : ''}${profile.verificationStatus === 'approved' ? ' · Verified' : ''}`} /> : null}
-        <AppButton variant="outline" onPress={() => {
-          const becomingAnonymous = profile?.accountIntent !== 'anonymous';
-          const change = async () => { try { setProfile(await profileService.setIntent(becomingAnonymous ? 'anonymous' : 'provider')); } catch { /* keep the current profile visible */ } };
-          if (becomingAnonymous) Alert.alert('Become an anonymous listener?', 'Your profile and photo will disappear from discovery. You can change this later.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Continue', onPress: () => void change() }]);
-          else void change();
-        }}>{profile?.accountIntent === 'anonymous' ? 'Become a listed companion' : 'Become an anonymous listener'}</AppButton>
+        <Info label="Account intent" value="Listed companion" />
+        <Info label="Support role" value={`${profile?.supportRole ?? 'Friendly'}${profile?.supportRole === 'expert' && profile.expertSubject ? ` · ${profile.expertSubject}` : ''}${profile?.verificationStatus === 'approved' ? ' · Verified' : ''}`} />
         <Info label="Name" value={name} />
         <Info label="Bio" value={profile?.bio?.trim() || 'Add a short introduction'} />
         <AppText variant="caption" tone="muted">Interests</AppText>
@@ -124,6 +120,7 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
         </View>
         <AppText variant="bodyS" tone="muted">Nearby discovery uses your location. Other people only see an approximate distance.</AppText>
       </ProfileSection>
+      </> : null}
       <ProfileSection title="Coins">
         <Pressable accessibilityRole="button" accessibilityLabel="Coin balance" className="min-h-12 flex-row items-center justify-between" onPress={onWallet}>
           <View className="flex-row items-center gap-sm">
@@ -156,6 +153,20 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
         </View>
       </ProfileSection>
       <ProfileSection title="Account">
+        <AppButton variant="outline" onPress={() => {
+          const nextIntent = isAnonymous ? 'provider' : 'anonymous';
+          const change = async () => {
+            try { setProfile(await profileService.setIntent(nextIntent)); } catch { /* keep the current profile visible */ }
+          };
+          const title = isAnonymous ? 'Become a listed companion?' : 'Become an anonymous account?';
+          const message = isAnonymous
+            ? 'Your account will switch to providing companionship. You can finish setting up your public profile before appearing in discovery.'
+            : 'Your profile and photo will disappear from discovery. You can change this later.';
+          Alert.alert(title, message, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Continue', onPress: () => void change() },
+          ]);
+        }}>{isAnonymous ? 'Become a listed companion' : 'Become an anonymous account'}</AppButton>
         <AppButton variant="outline" onPress={() => void logout()}>Log out</AppButton>
       </ProfileSection>
     </ScrollView>

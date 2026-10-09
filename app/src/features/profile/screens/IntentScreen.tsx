@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
@@ -11,5 +12,5 @@ export function IntentScreen({ navigation }: Props) {
   const { setProfile } = useProfile(); const [loading, setLoading] = useState(false); const [error, setError] = useState<string | null>(null);
   async function chooseAnonymous() { setLoading(true); setError(null); try { setProfile(await profileService.setIntent('anonymous')); navigation.navigate('Basics'); } catch (e) { setError(profileService.failureMessage(e)); } finally { setLoading(false); } }
   function chooseProvider() { navigation.navigate('Basics', { intent: 'provider' }); }
-  return <OnboardingFrame step={0} title="How do you want to use Accompany?" subtitle="You can change this later from your profile." loading={loading} error={error} footer={<><AppButton loading={loading} onPress={() => void chooseAnonymous()}>I’m here to listen</AppButton><AppButton variant="outline" disabled={loading} onPress={chooseProvider}>I want to provide support</AppButton></>}><AppText variant="bodyM">Listeners stay private and never appear in discovery. We’ll give you an alias so your real name isn’t shown.</AppText></OnboardingFrame>;
+  return <OnboardingFrame step={0} title="How do you want to use Accompany?" subtitle="Choose what brings you here." loading={loading} error={error} footer={<View className="gap-sm"><AppButton loading={loading} onPress={() => void chooseAnonymous()}>I’m looking for someone to accompany me</AppButton><AppButton variant="outline" disabled={loading} onPress={chooseProvider}>I’m here to accompany others</AppButton></View>}><AppText variant="bodyM">Choose the first option if you’re looking for company and support. Choose the second if you’re here to provide companionship. Anonymous accounts stay private and never appear in discovery.</AppText></OnboardingFrame>;
 }
