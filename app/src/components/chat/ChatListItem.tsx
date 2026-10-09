@@ -22,16 +22,17 @@ export function ChatListItem({ item, onPress }: { item: ConversationSummary; onP
     const timer = setInterval(() => setClock((value) => value + 1), 30_000);
     return () => clearInterval(timer);
   }, []);
+  const hasUnread = item.unreadCount > 0;
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={item.name} className="flex-row items-center gap-md py-md" onPress={onPress}>
       <PersonAvatar userId={item.personId} name={item.name} size={48} />
       <View className="flex-1 gap-xs">
         <View className="flex-row items-center justify-between">
           <AppText variant="label">{item.name}</AppText>
-          <AppText variant="caption" tone="muted">{when(item.updatedAt)}</AppText>
+          <AppText variant="caption" tone={hasUnread ? 'primary' : 'muted'}>{when(item.updatedAt)}</AppText>
         </View>
         <View className="flex-row items-center justify-between gap-sm">
-          <AppText variant="bodyS" tone={item.unreadCount > 0 ? 'default' : 'muted'} numberOfLines={1} className="flex-1">
+          <AppText variant="bodyS" tone={hasUnread ? 'default' : 'muted'} numberOfLines={1} className={`flex-1 ${hasUnread ? 'font-inter-medium' : ''}`}>
             {item.preview == null ? 'Say hello' : getGiphyMessageUrl(item.preview) ? 'GIF' : item.preview}
           </AppText>
           <UnreadBadge count={item.unreadCount} />

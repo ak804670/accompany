@@ -3,6 +3,7 @@ import { Animated, FlatList, Pressable, RefreshControl, ScrollView, TextInput, V
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChatListItem } from '@/components/chat/ChatListItem';
+import { UnreadBadge } from '@/components/chat/UnreadBadge';
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
 import { BrandIcon } from '@/components/icons/BrandIcon';
@@ -132,7 +133,7 @@ export function ChatsScreen({ onOpen }: ChatsScreenProps) {
       </View>
       <View className="mt-md border-b border-border">
         <View className="flex-row">
-          <ChatTabButton label={requestCount > 0 ? `Requests (${requestCount})` : 'Requests'} active={tab === 'requests'} onPress={() => show('requests')} />
+          <ChatTabButton label="Requests" count={requestCount} active={tab === 'requests'} onPress={() => show('requests')} />
           <ChatTabButton label="Conversations" active={tab === 'conversations'} onPress={() => show('conversations')} />
           <ChatTabButton label="Calls" active={tab === 'calls'} onPress={() => show('calls')} />
         </View>
@@ -206,10 +207,13 @@ function ChatPage({ width, items, illustration, emptyTitle, emptyBody, error, re
   );
 }
 
-function ChatTabButton({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+function ChatTabButton({ label, count, active, onPress }: { label: string; count?: number; active: boolean; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="tab" accessibilityState={{ selected: active }} className="min-h-12 flex-1 items-center justify-center" onPress={onPress}>
+    <Pressable accessibilityRole="tab" accessibilityState={{ selected: active }} className="min-h-12 flex-1 flex-row items-center justify-center gap-1.5" onPress={onPress}>
       <AppText variant="label" tone={active ? 'primary' : 'muted'}>{label}</AppText>
+      {count && count > 0 ? (
+        <UnreadBadge count={count} size="sm" variant={active ? 'solid' : 'subtle'} />
+      ) : null}
     </Pressable>
   );
 }

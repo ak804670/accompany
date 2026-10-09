@@ -41,9 +41,13 @@ export function BottomNavigation({ value, unread, onChange }: BottomNavigationPr
             className={`min-h-14 flex-1 items-center justify-center gap-xs rounded-sm ${active ? 'bg-primary-lighter/30 dark:bg-primary/20' : ''}`}
             onPress={() => onChange(item.id)}
           >
-            <BrandIcon name={item.icon} size={22} />
+            <View className="relative items-center justify-center">
+              <BrandIcon name={item.icon} size={22} />
+              {item.id === 'chats' && unread > 0 ? (
+                <UnreadBadge count={unread} size="sm" className="absolute -top-1.5 -right-2.5" />
+              ) : null}
+            </View>
             <AppText variant="caption" tone={active ? 'primary' : 'muted'}>{item.label}</AppText>
-            {item.id === 'chats' && unread > 0 ? <UnreadBadge count={unread} /> : null}
           </Pressable>
         );
       })}
