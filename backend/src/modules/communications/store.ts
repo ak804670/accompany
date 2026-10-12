@@ -32,8 +32,8 @@ export interface CommunicationStore {
   markSent(id: string, outboxId: string, provider: string, providerMessageId: string | null, providerStatus: string, at: Date): Promise<void>;
   markDelivered(input: { communicationId?: string | null; provider: string; providerMessageId?: string | null; providerStatus: string; at: Date }): Promise<void>;
   defer(outboxId: string, until: Date): Promise<void>;
-  markRetry(outboxId: string, id: string, retryCount: number, until: Date, errorCode: string): Promise<void>;
-  markFailed(outboxId: string, id: string, errorCode: string, at: Date): Promise<void>;
+  markRetry(outboxId: string, id: string, retryCount: number, until: Date, errorCode: string, errorMessage: string): Promise<void>;
+  markFailed(outboxId: string, id: string, errorCode: string, errorMessage: string, at: Date): Promise<void>;
   countSince(channel: CommunicationChannel, since: Date): Promise<number>;
   recoverInterrupted(): Promise<void>;
 }
@@ -137,6 +137,8 @@ export class MemoryCommunicationStore implements CommunicationStore {
     log.providerMessageId = providerMessageId;
     log.providerStatus = providerStatus;
     log.sentAt = at;
+    log.errorCode = null;
+    log.errorMessage = null;
     this.finish(outboxId, 'processed');
   }
 
@@ -157,6 +159,7 @@ export class MemoryCommunicationStore implements CommunicationStore {
     if (next === 'failed') {
       log.failedAt = input.at;
       log.errorCode = 'provider_failed';
+      log.errorMessage = input.providerStatus;
     }
   }
 
@@ -169,10 +172,11 @@ export class MemoryCommunicationStore implements CommunicationStore {
     event.availableAt = until;
   }
 
-  async markRetry(outboxId: string, id: string, retryCount: number, until: Date, errorCode: string): Promise<void> {
+  async markRetry(outboxId: string, id: string, retryCount: number, until: Date, errorCode: string, errorMessage: string): Promise<void> {
     const log = this.require(id);
     log.status = 'queued';
     log.errorCode = errorCode;
+    log.errorMessage = errorMessage;
     const event = this.outbox.find((item) => item.id === outboxId);
     if (event) {
       event.status = 'pending';
@@ -181,10 +185,11 @@ export class MemoryCommunicationStore implements CommunicationStore {
     }
   }
 
-  async markFailed(outboxId: string, id: string, errorCode: string, at: Date): Promise<void> {
+  async markFailed(outboxId: string, id: string, errorCode: string, errorMessage: string, at: Date): Promise<void> {
     const log = this.require(id);
     log.status = 'failed';
     log.errorCode = errorCode;
+    log.errorMessage = errorMessage;
     log.failedAt = at;
     this.finish(outboxId, 'failed');
   }
@@ -374,7 +379,7 @@ export class PgCommunicationStore implements CommunicationStore {
       await client.query(
         `UPDATE acc.communication_logs
          SET status = CASE WHEN status = 'delivered' THEN status ELSE 'sent' END,
-             provider = $2, provider_message_id = $3, provider_status = $4, sent_at = COALESCE(sent_at, $5), error_code = NULL
+             provider = $2, provider_message_id = $3, provider_status = $4, sent_at = COALESCE(sent_at, $5), error_code = NULL, error_message = NULL
          WHERE id = $1`,
         [id, provider, providerMessageId, providerStatus, at],
       );
@@ -407,7 +412,8 @@ export class PgCommunicationStore implements CommunicationStore {
              END,
              delivered_at = CASE WHEN $4 = 'delivered' THEN $5 ELSE delivered_at END,
              failed_at = CASE WHEN $4 = 'failed' THEN $5 ELSE failed_at END,
-             error_code = CASE WHEN $4 = 'failed' THEN 'provider_failed' ELSE error_code END
+             error_code = CASE WHEN $4 = 'failed' THEN 'provider_failed' ELSE error_code END,
+             error_message = CASE WHEN $4 = 'failed' THEN $2 ELSE error_message END
          WHERE id = $1`,
         [input.communicationId, input.providerStatus, input.providerMessageId ?? null, status, input.at],
       );
@@ -440,13 +446,13 @@ export class PgCommunicationStore implements CommunicationStore {
     );
   }
 
-  async markRetry(outboxId: string, id: string, retryCount: number, until: Date, errorCode: string): Promise<void> {
+  async markRetry(outboxId: string, id: string, retryCount: number, until: Date, errorCode: string, errorMessage: string): Promise<void> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
       await client.query(
-        `UPDATE acc.communication_logs SET status = 'queued', error_code = $2 WHERE id = $1`,
-        [id, errorCode],
+        `UPDATE acc.communication_logs SET status = 'queued', error_code = $2, error_message = $3 WHERE id = $1`,
+        [id, errorCode, errorMessage],
       );
       await client.query(
         `UPDATE acc.outbox_events SET status = 'pending', retry_count = $2, available_at = $3 WHERE id = $1`,
@@ -461,13 +467,13 @@ export class PgCommunicationStore implements CommunicationStore {
     }
   }
 
-  async markFailed(outboxId: string, id: string, errorCode: string, at: Date): Promise<void> {
+  async markFailed(outboxId: string, id: string, errorCode: string, errorMessage: string, at: Date): Promise<void> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
       await client.query(
-        `UPDATE acc.communication_logs SET status = 'failed', error_code = $2, failed_at = $3 WHERE id = $1`,
-        [id, errorCode, at],
+        `UPDATE acc.communication_logs SET status = 'failed', error_code = $2, error_message = $3, failed_at = $4 WHERE id = $1`,
+        [id, errorCode, errorMessage, at],
       );
       await client.query(
         `UPDATE acc.outbox_events SET status = 'failed', processed_at = $2 WHERE id = $1`,
@@ -502,7 +508,7 @@ export class PgCommunicationStore implements CommunicationStore {
     );
     await this.pool.query(
       `UPDATE acc.communication_logs log
-       SET status = 'failed', error_code = 'ambiguous_delivery', failed_at = NOW()
+       SET status = 'failed', error_code = 'ambiguous_delivery', error_message = 'Delivery outcome is unknown because the worker stopped after sending.', failed_at = NOW()
        FROM acc.outbox_events event
        WHERE log.id = (event.payload->>'communicationId')::uuid
          AND event.status = 'processing'

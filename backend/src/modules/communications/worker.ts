@@ -40,7 +40,7 @@ export class CommunicationWorker {
       return;
     }
     if (log.status === 'sending' && !log.providerMessageId) {
-      await this.store.markFailed(job.outboxId, log.id, 'ambiguous_delivery', this.now());
+      await this.store.markFailed(job.outboxId, log.id, 'ambiguous_delivery', 'Delivery outcome is unknown because the worker stopped after sending.', this.now());
       logger.error('communication delivery ambiguous', {
         channel: log.channel,
         purpose: log.purpose,
@@ -73,13 +73,14 @@ export class CommunicationWorker {
     } catch (error) {
       const retryable = error instanceof ProviderRequestError ? error.retryable : true;
       const code = error instanceof ProviderRequestError ? error.code : 'provider_unavailable';
+      const errorMessage = error instanceof Error ? error.message : String(error);
       const nextAttempt = job.retryCount + 1;
       if (retryable && nextAttempt < this.maxAttempts) {
         const delay = retryDelaysMs[Math.min(job.retryCount, retryDelaysMs.length - 1)] ?? 60_000;
-        await this.store.markRetry(job.outboxId, log.id, nextAttempt, new Date(this.now().getTime() + delay), code);
+        await this.store.markRetry(job.outboxId, log.id, nextAttempt, new Date(this.now().getTime() + delay), code, errorMessage);
         return;
       }
-      await this.store.markFailed(job.outboxId, log.id, code, this.now());
+      await this.store.markFailed(job.outboxId, log.id, code, errorMessage, this.now());
       logger.error('communication failed', {
         channel,
         purpose: log.purpose,
