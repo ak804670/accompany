@@ -1,4 +1,3 @@
-import { Check } from 'lucide-react-native';
 import type { ComponentProps, ReactNode } from 'react';
 import { ActivityIndicator } from 'react-native';
 
@@ -20,7 +19,6 @@ export type AppButtonProps = Omit<
   variant?: AppButtonVariant;
   size?: AppButtonSize;
   loading?: boolean;
-  status?: 'default' | 'success';
   children?: ReactNode;
 };
 
@@ -87,7 +85,6 @@ export function AppButton({
   variant = 'primary',
   size = 'md',
   loading = false,
-  status = 'default',
   disabled,
   className,
   children,
@@ -95,9 +92,9 @@ export function AppButton({
   ...props
 }: AppButtonProps) {
   const { resolvedScheme } = useTheme();
-  const visualVariant = status === 'success' ? 'success' : variant;
-  const mappedSize = mapSize(size, visualVariant === 'icon' ? 'icon' : variant);
-  const isDisabled = Boolean(disabled) || loading || status === 'success';
+  const visualVariant = variant;
+  const mappedSize = mapSize(size, variant);
+  const isDisabled = Boolean(disabled) || loading;
 
   return (
     <Button
@@ -110,16 +107,17 @@ export function AppButton({
         busy: loading,
       }}
       className={cn(
-        visualVariant === 'success' && 'bg-success active:bg-success/90',
         mappedSize.className,
         className
       )}
       {...props}>
       {loading ? (
         <ActivityIndicator color={indicatorColor(visualVariant, resolvedScheme)} size="small" />
-      ) : null}
-      {status === 'success' && !loading ? <Icon as={Check} className="size-4" /> : null}
-      {typeof children === 'string' ? <Text>{children}</Text> : children}
+      ) : typeof children === 'string' ? (
+        <Text>{children}</Text>
+      ) : (
+        children
+      )}
     </Button>
   );
 }
