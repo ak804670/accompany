@@ -6,7 +6,9 @@ import { createCallRouter, createLiveKitWebhook } from './modules/calls/call.rou
 import { CallService } from './modules/calls/call.service.js';
 import { PgCallStore } from './modules/calls/call.store.js';
 import { LiveKitProvider } from './modules/calls/livekit-provider.js';
-import { createNotificationQueue, LogNotificationProvider, startNotificationWorker } from './modules/calls/notifications.js';
+import { createNotificationQueue, startNotificationWorker } from './modules/calls/notifications.js';
+import { createNotificationProvider } from './modules/notifications/firebase-provider.js';
+import { AppNotificationService } from './modules/notifications/notification.service.js';
 import { ManualPaymentProvider } from './modules/wallet/payment-provider.js';
 import { createPaymentWebhook, createWalletRouter } from './modules/wallet/wallet.routes.js';
 import { WalletService } from './modules/wallet/wallet.service.js';
@@ -84,6 +86,8 @@ const profileService = new ProfileService(
 const callConfig = readCallConfig(process.env, config.nodeEnv);
 const callStore = new PgCallStore(pool);
 const notifications = createNotificationQueue(config.redisUrl);
+const notificationProvider = createNotificationProvider(config.firebase ?? {});
+const notificationService = new AppNotificationService(notifications, pool);
 const callService = callConfig
   ? new CallService(
       callStore,
@@ -98,9 +102,7 @@ const callService = callConfig
       },
     )
   : null;
-const notificationWorker = callService
-  ? startNotificationWorker(config.redisUrl, callStore, new LogNotificationProvider())
-  : null;
+const notificationWorker = startNotificationWorker(config.redisUrl, callStore, notificationProvider);
 
 const payments = new ManualPaymentProvider(process.env.PAYMENT_WEBHOOK_SECRET ?? '');
 const wallet = new WalletService(
@@ -118,6 +120,7 @@ const app = createApp({
   media,
   audit,
   nodeEnv: config.nodeEnv,
+  notificationService,
   wallet: { router: createWalletRouter(authService, wallet, process.env.ADMIN_API_KEY), webhook: createPaymentWebhook(wallet, payments) },
   calls: callService && callConfig
     ? { router: createCallRouter(authService, callService, callStore), webhook: createLiveKitWebhook(callConfig, callService, callStore) }
@@ -142,6 +145,7 @@ attachChatSocket(server, {
   auth: authService,
   pool,
   limiter: new RedisRateLimiter(redis),
+  notificationService,
   notify: (message) => notifications.enqueue(message).then(() => undefined),
 });
 

@@ -10,6 +10,8 @@ import { createConversationRouter } from './modules/shell/conversations.routes.j
 import { createShellRouter } from './modules/shell/people.routes.js';
 import { createAuthRouter } from './modules/auth/auth.routes.js';
 import { createRatingRouter } from './modules/ratings/rating.routes.js';
+import { createDeviceRouter } from './modules/notifications/device.routes.js';
+import { PgDeviceStore } from './modules/notifications/device.store.js';
 import { createCommunicationWebhookRouter } from './modules/communications/webhooks/routes.js';
 import type { MediaStorage } from './modules/profile/media-storage.js';
 import type { AuditEntry } from './modules/audit/audit-log.js';
@@ -30,6 +32,7 @@ export type AppDependencies = {
   media?: MediaStorage;
   calls?: { router: Router; webhook: Router };
   wallet?: { router: Router; webhook: Router };
+  notificationService?: import('./modules/notifications/notification.service.js').NotificationService;
 };
 
 export function createApp(deps: AppDependencies) {
@@ -86,8 +89,9 @@ export function createApp(deps: AppDependencies) {
   }
   if (deps.pool) {
     app.use('/v1', createShellRouter(deps.authService, deps.pool, deps.media));
-    app.use('/v1/conversations', createConversationRouter(deps.authService, deps.pool));
+    app.use('/v1/conversations', createConversationRouter(deps.authService, deps.pool, deps.notificationService));
     app.use('/v1', createRatingRouter(deps.authService, deps.pool));
+    app.use('/v1/devices', createDeviceRouter(deps.authService, new PgDeviceStore(deps.pool)));
   }
   if (deps.profileService) {
     app.use('/v1/profile', createProfileRouter(deps.profileService));

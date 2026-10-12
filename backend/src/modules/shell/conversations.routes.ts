@@ -6,6 +6,7 @@ import type { Pool } from 'pg';
 import { broadcastNewMessage, broadcastRead, saveTextMessage } from '../../infrastructure/realtime/chat-socket.js';
 import { AuthError } from '../auth/auth.errors.js';
 import type { AuthService } from '../auth/auth.service.js';
+import type { NotificationService } from '../notifications/notification.service.js';
 import { canCreateChatRequest, canRespondToRequest, canSendMessage, type ConversationStatus } from './conversation-rules.js';
 
 const pageSize = 30;
@@ -17,7 +18,7 @@ function bearer(header: string | undefined): string {
   return header.slice('Bearer '.length).trim();
 }
 
-export function createConversationRouter(auth: AuthService, pool: Pool) {
+export function createConversationRouter(auth: AuthService, pool: Pool, notifications?: NotificationService) {
   const router = Router();
 
   async function userId(header: string | undefined): Promise<string> {
@@ -165,6 +166,14 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
       } finally {
         client.release();
       }
+      if (notifications) {
+        void notifications.notifyChatRequest({
+          recipientId: personId,
+          senderId: id,
+          conversationId,
+          message,
+        }).catch(() => undefined);
+      }
       response.status(201).json({ conversationId, status: 'pending' });
     } catch (error) {
       next(error);
@@ -175,6 +184,15 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
     try {
       const id = await userId(request.header('authorization'));
       const outcome = await respond(pool, request.params.id, id, 'active');
+      if (outcome.status === 200 && notifications) {
+        const conv = await loadConversation(pool, request.params.id, id);
+        if (conv) {
+          void notifications.notifyChatAccepted({
+            recipientId: conv.personId,
+            conversationId: request.params.id,
+          }).catch(() => undefined);
+        }
+      }
       response.status(outcome.status).json(outcome.body);
     } catch (error) {
       next(error);
@@ -284,7 +302,18 @@ export function createConversationRouter(auth: AuthService, pool: Pool) {
       }
       const clientMessageId = typeof request.body?.clientMessageId === 'string' ? request.body.clientMessageId.slice(0, 80) : null;
       const saved = await saveTextMessage(pool, { conversationId: request.params.id, senderId: id, content: body, clientMessageId });
-      if (conversation) broadcastNewMessage(conversation.personId, request.params.id, saved);
+      if (conversation) {
+        broadcastNewMessage(conversation.personId, request.params.id, saved);
+        if (notifications) {
+          void notifications.notifyNewMessage({
+            recipientId: conversation.personId,
+            senderId: id,
+            conversationId: request.params.id,
+            messageId: saved.messageId,
+            content: saved.content,
+          }).catch(() => undefined);
+        }
+      }
       response.status(201).json({
         message: { id: saved.messageId, senderId: saved.senderId, body: saved.content, createdAt: saved.createdAt, mine: true, clientMessageId: saved.clientMessageId },
       });

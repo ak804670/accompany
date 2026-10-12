@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 
 import { warmSession, wipeUserCache } from '@/database/session-cache';
 import { configureApiAuth } from '@/services/api';
+import { notificationService } from '@/services/notifications/notification.service';
 import { socketService } from '@/services/realtime/socket';
 import { secureStorage } from '@/services/storage';
 
@@ -72,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (status === 'authenticated' && user?.id) {
       void warmSession(user.id);
       socketService.connect();
+      void notificationService.registerDeviceToken(true);
     }
     if (status === 'unauthenticated') socketService.disconnect();
   }, [status, user?.id]);
@@ -108,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     const userId = user?.id;
     try {
+      await notificationService.unregisterDeviceToken().catch(() => undefined);
       await authService.logout();
     } finally {
       if (userId) await wipeUserCache(userId);

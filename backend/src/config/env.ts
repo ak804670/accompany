@@ -19,6 +19,14 @@ function loadLocalEnvFile(): void {
 
 export type NodeEnv = (typeof nodeEnvs)[number];
 
+export type FirebaseConfig = {
+  projectId?: string;
+  clientEmail?: string;
+  privateKey?: string;
+  serviceAccountPath?: string;
+  serviceAccountJson?: string;
+};
+
 export type AppConfig = {
   nodeEnv: NodeEnv;
   port: number;
@@ -31,6 +39,7 @@ export type AppConfig = {
   otpExpirySeconds: number;
   otpMaxAttempts: number;
   otpResendSeconds: number;
+  firebase?: FirebaseConfig;
 };
 
 function required(name: string, value: string | undefined): string {
@@ -92,5 +101,12 @@ export function readConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     otpExpirySeconds: positiveInt('OTP_EXPIRY', source.OTP_EXPIRY, 300),
     otpMaxAttempts: positiveInt('OTP_MAX_ATTEMPTS', source.OTP_MAX_ATTEMPTS, 5),
     otpResendSeconds: 30,
+    firebase: {
+      projectId: source.FIREBASE_PROJECT_ID || undefined,
+      clientEmail: source.FIREBASE_CLIENT_EMAIL || undefined,
+      privateKey: source.FIREBASE_PRIVATE_KEY ? source.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
+      serviceAccountPath: source.FIREBASE_SERVICE_ACCOUNT_PATH || undefined,
+      serviceAccountJson: source.FIREBASE_SERVICE_ACCOUNT_JSON || undefined,
+    },
   };
 }

@@ -15,12 +15,23 @@ export class LogNotificationProvider implements NotificationProvider {
   }
 }
 
-export function createNotificationQueue(redisUrl: string) {
+export type NotificationQueue = {
+  enqueue(message: PushMessage, jobId?: string): Promise<unknown>;
+  close(): Promise<void>;
+};
+
+export type NotificationTokenStore = {
+  activeTokens(userId: string): Promise<Array<{ id: string; token: string }>>;
+  deactivateTokenValue(token: string): Promise<void>;
+};
+
+export function createNotificationQueue(redisUrl: string): NotificationQueue {
   const queue = new Queue<PushMessage>('notifications', { connection: { url: redisUrl, maxRetriesPerRequest: null } });
   return {
-    enqueue(message: PushMessage) {
+    enqueue(message: PushMessage, jobId?: string) {
       return queue.add('send', message, {
-        attempts: 5,
+        jobId,
+        attempts: 3,
         backoff: { type: 'exponential', delay: 1000 },
         removeOnComplete: 200,
         removeOnFail: 500,
@@ -32,7 +43,7 @@ export function createNotificationQueue(redisUrl: string) {
   };
 }
 
-export function startNotificationWorker(redisUrl: string, store: PgCallStore, provider: NotificationProvider) {
+export function startNotificationWorker(redisUrl: string, store: NotificationTokenStore, provider: NotificationProvider) {
   const worker = new Worker<PushMessage>(
     'notifications',
     async (job) => {

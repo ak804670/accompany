@@ -33,6 +33,7 @@ import { callService } from '@/features/calls/call.service';
 import { groupTimeline, isLiveCall } from '@/features/calls/call-presentation';
 import { peopleService } from '@/features/home/people.service';
 import { ApiError } from '@/services/api';
+import { notificationService } from '@/services/notifications/notification.service';
 import { ChatEvents, socketService, type LiveMessage } from '@/services/realtime/socket';
 import { getGiphyDialog, getGiphyMessageUrl, giphyMessageBody } from '@/features/chat/giphy';
 
@@ -115,6 +116,13 @@ export function ChatScreen({ conversationId, name, personId, online, onCall, hig
       hideSubscription.remove();
     };
   }, []);
+
+  useEffect(() => {
+    notificationService.setActiveConversation(conversationId);
+    return () => {
+      notificationService.setActiveConversation(null);
+    };
+  }, [conversationId]);
 
   async function loadOlder(next: string | null) {
     if (user?.id && messages.length > 0) {

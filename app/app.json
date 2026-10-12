@@ -1,18 +1,18 @@
 {
   "expo": {
     "name": "Accompany",
-    "slug": "dating-marketplace",
+    "slug": "accompany",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "datingmarketplace",
+    "scheme": "accompany",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.datingmarketplace.app",
+      "bundleIdentifier": "com.accompany.app",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Accompany uses your microphone for voice and video calls.",
         "NSCameraUsageDescription": "Accompany uses your camera for video calls.",
@@ -23,7 +23,7 @@
       }
     },
     "android": {
-      "package": "com.datingmarketplace.app",
+      "package": "com.accompany.app",
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "android.permission.MANAGE_OWN_CALLS",
@@ -39,7 +39,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#F7F4EF"
-      }
+      },
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -67,7 +68,14 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#F7F4EF"
+        }
+      ]
     ],
     "extra": {
       "eas": {

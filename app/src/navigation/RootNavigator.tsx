@@ -14,7 +14,9 @@ import { LoginScreen } from '@/features/auth/screens/LoginScreen';
 import { VerifyOtpScreen } from '@/features/auth/screens/VerifyOtpScreen';
 import { WelcomeScreen } from '@/features/auth/screens/WelcomeScreen';
 import { MainShell } from '@/features/shell/MainShell';
+import { navigationRef, flushPendingNotificationNavigation } from '@/services/notifications/notification-navigation';
 import { NAV_THEME, palette, useTheme } from '@/theme';
+import { useEffect } from 'react';
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const AppStack = createNativeStackNavigator<AuthenticatedStackParamList>();
@@ -69,8 +71,17 @@ export function RootNavigator() {
     contentStyle: { backgroundColor: colors.background },
   };
 
+  useEffect(() => {
+    if (session.isAuthenticated) {
+      const timer = setTimeout(() => {
+        flushPendingNotificationNavigation();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [session.isAuthenticated]);
+
   return (
-    <NavigationContainer theme={NAV_THEME[resolvedScheme]}>
+    <NavigationContainer ref={navigationRef} theme={NAV_THEME[resolvedScheme]}>
       <StatusBar style={resolvedScheme === 'dark' ? 'light' : 'dark'} />
       {session.isChecking ? (
         <SessionChecking />

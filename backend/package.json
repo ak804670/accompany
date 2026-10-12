@@ -9,11 +9,12 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "migrate": "tsx src/infrastructure/database/migrate.ts",
-    "test": "tsx --test src/modules/auth/auth.service.test.ts src/modules/auth/auth.http.test.ts src/modules/communications/communications.test.ts src/modules/profile/profile.service.test.ts src/modules/profile/profile.http.test.ts src/modules/shell/conversation-rules.test.ts src/modules/calls/call-rules.test.ts src/modules/wallet/wallet-rules.test.ts src/infrastructure/realtime/chat-events.test.ts src/modules/ratings/rating.test.ts"
+    "test": "tsx --test src/modules/auth/auth.service.test.ts src/modules/auth/auth.http.test.ts src/modules/communications/communications.test.ts src/modules/profile/profile.service.test.ts src/modules/profile/profile.http.test.ts src/modules/shell/conversation-rules.test.ts src/modules/calls/call-rules.test.ts src/modules/wallet/wallet-rules.test.ts src/infrastructure/realtime/chat-events.test.ts src/modules/ratings/rating.test.ts src/modules/notifications/firebase-provider.test.ts src/modules/notifications/device.routes.test.ts src/modules/notifications/notification.service.test.ts"
   },
   "dependencies": {
     "bullmq": "^6.3.8",
     "express": "^5.2.1",
+    "firebase-admin": "^14.5.0",
     "ioredis": "^5.8.2",
     "jose": "^6.1.0",
     "livekit-server-sdk": "^2.19.1",

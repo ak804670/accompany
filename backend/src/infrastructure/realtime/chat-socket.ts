@@ -8,6 +8,7 @@ import { canSendMessage, type ConversationStatus } from '../../modules/shell/con
 import { logger } from '../../utils/logger.js';
 import type { PushMessage } from '../../modules/calls/notification-types.js';
 import { ChatEvents, failureForDecision, nextPresence, validateMessageContent, type LiveMessage, type SocketFailure } from './chat-events.js';
+import type { NotificationService } from '../../modules/notifications/notification.service.js';
 
 type ConversationRow = {
   status: ConversationStatus;
@@ -19,6 +20,7 @@ type ChatSocketDeps = {
   pool: Pool;
   limiter: RateLimiter;
   notify?: (message: PushMessage) => Promise<void>;
+  notificationService?: NotificationService;
 };
 
 const socketsByUser = new Map<string, Set<string>>();
@@ -54,6 +56,17 @@ function untrack(userId: string, socketId: string): 'OFFLINE' | null {
 
 export function isUserOnline(userId: string): boolean {
   return (socketsByUser.get(userId)?.size ?? 0) > 0;
+}
+
+export function isUserInConversation(userId: string, conversationId: string): boolean {
+  const userSockets = socketsByUser.get(userId);
+  if (!userSockets || userSockets.size === 0) return false;
+  const roomSockets = io?.sockets?.adapter?.rooms?.get(conversationRoom(conversationId));
+  if (!roomSockets) return false;
+  for (const socketId of userSockets) {
+    if (roomSockets.has(socketId)) return true;
+  }
+  return false;
 }
 
 export function publishToUser(userId: string, event: string, payload: unknown): void {
@@ -266,14 +279,27 @@ export function attachChatSocket(server: HttpServer, deps: ChatSocketDeps): Serv
         if (isUserOnline(conversation.personId)) {
           const deliveredAt = await markDelivered(deps.pool, message.messageId);
           io?.to(userRoom(userId)).emit(ChatEvents.messageDelivered, { messageId: message.messageId, conversationId, userId: conversation.personId, deliveredAt });
-        } else if (deps.notify) {
-          await deps.notify({
-            userId: conversation.personId,
-            type: 'MESSAGE_RECEIVED',
-            title: 'New message',
-            body: 'You have a new message.',
-            data: { conversationId, messageId: message.messageId },
-          });
+        }
+
+        const activelyViewing = isUserInConversation(conversation.personId, conversationId);
+        if (!activelyViewing) {
+          if (deps.notificationService) {
+            void deps.notificationService.notifyNewMessage({
+              recipientId: conversation.personId,
+              senderId: userId,
+              conversationId,
+              messageId: message.messageId,
+              content: message.content,
+            }).catch(() => undefined);
+          } else if (deps.notify && !isUserOnline(conversation.personId)) {
+            await deps.notify({
+              userId: conversation.personId,
+              type: 'MESSAGE_RECEIVED',
+              title: 'New message',
+              body: 'You have a new message.',
+              data: { conversationId, messageId: message.messageId },
+            });
+          }
         }
         logger.info('socket message sent', { socketId: socket.id, userId, conversationId, messageId: message.messageId });
         if (typeof ack === 'function') ack({ ok: true, message });
