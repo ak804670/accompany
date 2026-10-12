@@ -46,7 +46,7 @@ export class AppNotificationService implements NotificationService {
     content?: string | null;
   }): Promise<void> {
     const senderName = input.senderName ?? (await this.resolveDisplayName(input.senderId)) ?? 'Someone';
-    const body = truncate(input.content) || 'Sent you a new message.';
+    const body = notificationPreview(input.content);
     const jobId = `msg-${input.messageId}`;
 
     const message: PushMessage = {
@@ -181,4 +181,10 @@ function truncate(text: string | null | undefined, max = 100): string {
   const trimmed = text.trim();
   if (trimmed.length <= max) return trimmed;
   return trimmed.slice(0, max - 1) + '…';
+}
+
+function notificationPreview(content: string | null | undefined): string {
+  if (!content?.trim()) return 'Sent you a new message.';
+  if (content.trim().startsWith('giphy:')) return 'Sent a GIF or emoji.';
+  return truncate(content);
 }
