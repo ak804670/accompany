@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { prefetchPhotos } from '@/components/home/photo-cache';
+import { invalidatePhoto, prefetchPhotos } from '@/components/home/photo-cache';
 import { discoveryFilterKey, discoveryRepository } from '@/database/repositories/discoveryRepository';
 import { useSession } from '@/features/auth';
 import {
@@ -91,6 +91,12 @@ export function useDiscoveryDeck(distanceKm: number | null, interestIds: string[
       } else {
         // Refresh is a new snapshot. Replacing the first page lets newly online
         // people appear and removes people who are no longer discoverable.
+        const previousMediaIds = new Map(peopleRef.current.map((person) => [person.userId, person.mediaId]));
+        for (const person of incoming) {
+          if (previousMediaIds.has(person.userId) && previousMediaIds.get(person.userId) !== person.mediaId) {
+            invalidatePhoto(person.userId);
+          }
+        }
         setPeople(incoming);
         setIndex(0);
         setCursor(result.nextCursor);

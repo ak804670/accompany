@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, TextInput, View } from 'react-native';
 
 import { AppBottomSheet } from '@/components/design-system/AppBottomSheet';
 import { AppButton } from '@/components/design-system/AppButton';
@@ -18,7 +18,7 @@ import { prepareProfileImage } from '@/features/profile/services/prepare-image';
 import type { ProfileInterest } from '@/features/profile/types';
 import { profileImageConfig } from '@/services/media/image-config';
 import { PhotoViewer } from '@/components/profile/PhotoViewer';
-import { invalidatePhoto } from '@/components/home/photo-cache';
+import { invalidatePhoto, rememberPhoto } from '@/components/home/photo-cache';
 
 type Tag = { id?: string; name: string };
 type Rates = { chat: string; audio: string; video: string };
@@ -48,6 +48,7 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
   const [locationNote, setLocationNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoId, setPhotoId] = useState<string | null>(null);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
 
@@ -168,21 +169,37 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
   }
 
   async function addPhoto() {
+    if (uploadingPhoto) return;
     if ((profile?.media.length ?? 0) >= profileImageConfig.maxPhotos) {
       setError(`You can add up to ${profileImageConfig.maxPhotos} photos.`);
       return;
     }
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setError('Photo library access is needed to choose a photo.');
-      return;
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        setError('Photo library access is needed to choose a photo.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
+      const asset = result.assets?.[0];
+      if (result.canceled || !asset) return;
+      setUploadingPhoto(true);
+      setError(null);
+      const existingIds = new Set((profile?.media ?? []).map((photo) => photo.id));
+      const prepared = await prepareProfileImage(asset.uri);
+      const saved = await profileService.uploadPhoto(prepared.bytes, prepared.contentType);
+      const addedPhoto = saved.media.find((photo) => !existingIds.has(photo.id));
+      if (addedPhoto) {
+        setPreviews((current) => ({ ...current, [addedPhoto.id]: prepared.uri }));
+        if (addedPhoto.isPrimary && user?.id) rememberPhoto(user.id, prepared.uri);
+      }
+      setProfile(saved);
+      refreshDiscovery();
+    } catch (caught) {
+      setError(profileService.failureMessage(caught));
+    } finally {
+      setUploadingPhoto(false);
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
-    const asset = result.assets?.[0];
-    if (result.canceled || !asset) return;
-    const prepared = await prepareProfileImage(asset.uri);
-    setProfile(await profileService.uploadPhoto(prepared.bytes, prepared.contentType));
-    if (user?.id) invalidatePhoto(user.id);
   }
 
   async function makePrimary(mediaId: string) {
@@ -231,8 +248,8 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
             </Pressable>
           ))}
           {(profile?.media.length ?? 0) < profileImageConfig.maxPhotos ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Add photo" className="h-36 w-28 items-center justify-center rounded-sm border border-dashed border-border" onPress={() => void addPhoto()}>
-              <AppText variant="label">+ Add photo</AppText>
+            <Pressable accessibilityRole="button" accessibilityLabel={uploadingPhoto ? 'Uploading photo' : 'Add photo'} accessibilityState={{ disabled: uploadingPhoto }} disabled={uploadingPhoto} className="h-36 w-28 items-center justify-center gap-xs rounded-sm border border-dashed border-border" onPress={() => void addPhoto()}>
+              {uploadingPhoto ? <><ActivityIndicator /><AppText variant="caption" tone="muted">Uploading…</AppText></> : <AppText variant="label">+ Add photo</AppText>}
             </Pressable>
           ) : null}
         </View>

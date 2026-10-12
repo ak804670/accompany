@@ -24,7 +24,7 @@ export function OnlinePersonCard({ person, onPress }: OnlinePersonCardProps) {
       onPress={onPress}
     >
       <View className="min-h-0 flex-1 bg-muted">
-        <PersonAvatar userId={person.userId} name={person.name} fill />
+        <PersonAvatar userId={person.userId} name={person.name} fill reloadKey={person.mediaId ?? 'no-primary'} />
       </View>
       <View className="gap-sm p-md">
         <View className="gap-xs">

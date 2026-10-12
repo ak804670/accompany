@@ -29,7 +29,7 @@ export function PersonListCard({ person, onPress }: PersonListCardProps) {
       onPress={onPress}
     >
       <View className="relative h-28 w-24 overflow-hidden rounded-lg bg-muted">
-        <PersonAvatar userId={person.userId} name={person.name} fill />
+        <PersonAvatar userId={person.userId} name={person.name} fill reloadKey={person.mediaId ?? 'no-primary'} />
         <View className="absolute bottom-1.5 left-1.5 flex-row items-center gap-1.5 rounded-full bg-black/60 px-2 py-0.5">
           <View
             className="h-2 w-2 rounded-full"
