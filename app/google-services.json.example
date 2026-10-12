@@ -1,0 +1,30 @@
+{
+  "/*_COMMENT": "Obtain this file from the Firebase Console: Project Settings > General > Your apps > Android app (package name: com.accompany.app) > Download google-services.json. Place the downloaded file at app/google-services.json",
+  "project_info": {
+    "project_number": "YOUR_FIREBASE_PROJECT_NUMBER",
+    "project_id": "YOUR_FIREBASE_PROJECT_ID",
+    "storage_bucket": "YOUR_FIREBASE_PROJECT_ID.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:YOUR_FIREBASE_PROJECT_NUMBER:android:YOUR_APP_HASH",
+        "android_client_info": {
+          "package_name": "com.accompany.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "YOUR_FIREBASE_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
