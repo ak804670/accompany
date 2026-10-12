@@ -104,17 +104,13 @@ export class MemoryProfileRepository implements ProfileRepository {
     if (!media) {
       return null;
     }
+    if (media.isPrimary) {
+      return null;
+    }
     this.media.get(mediaId)!.deleted = true;
     const profile = this.profiles.get(userId);
     if (profile) {
       profile.media = profile.media.filter((item) => item.id !== mediaId);
-      if (media.isPrimary && profile.media[0]) {
-        profile.media[0] = { ...profile.media[0], isPrimary: true };
-        const stored = this.media.get(profile.media[0].id);
-        if (stored) {
-          stored.isPrimary = true;
-        }
-      }
     }
     return media;
   }

@@ -219,7 +219,7 @@ export function PersonScreen({ userId, onBack, onConversation }: PersonScreenPro
 
             {/* Reviews & Suggestions Section */}
             <View className="mt-md gap-md border-t border-border pt-md">
-              <View className="gap-sm">
+              <View className="flex-col items-center justify-between">
                 <View className="flex-row items-center gap-2">
                   <AppText variant="h3">Reviews & Suggestions</AppText>
                   <View className="rounded-full bg-muted px-2 py-0.5">
@@ -230,7 +230,7 @@ export function PersonScreen({ userId, onBack, onConversation }: PersonScreenPro
                 </View>
 
                 {/* Sort selector: Star (5 on top) vs Date */}
-                <View className="flex-row items-center self-start gap-1 rounded-lg bg-muted p-1">
+                <View className="flex-row items-center gap-1 rounded-lg bg-muted p-1">
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Sort by highest stars"

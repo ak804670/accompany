@@ -65,8 +65,16 @@ describe('profile service', () => {
       assert.equal(error.code, 'MEDIA_NOT_FOUND');
       return true;
     });
-    const removed = await profile.removeMedia('user-1', mediaId);
-    assert.equal(removed.media.length, 0);
+    await assert.rejects(() => profile.removeMedia('user-1', mediaId), (error: unknown) => {
+      assert.ok(error instanceof ProfileError);
+      assert.equal(error.code, 'VALIDATION_ERROR');
+      return true;
+    });
+    const withGalleryPhoto = await profile.addMedia('user-1', jpeg, 'image/jpeg');
+    const galleryPhotoId = withGalleryPhoto.media.find((item) => !item.isPrimary)?.id ?? '';
+    const removed = await profile.removeMedia('user-1', galleryPhotoId);
+    assert.equal(removed.media.length, 1);
+    assert.equal(removed.media[0]?.isPrimary, true);
   });
 
   it('blocks a suspended account', async () => {

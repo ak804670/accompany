@@ -23,12 +23,12 @@ import { CommunicationService } from './modules/communications/CommunicationServ
 import { createEmailProvider, createSmsProvider } from './modules/communications/providerFactory.js';
 import { PgCommunicationStore } from './modules/communications/store.js';
 import { CommunicationWorker } from './modules/communications/worker.js';
-import { LocalMediaStorage } from './modules/profile/media-storage.js';
+import { readStorageConfig } from './config/storage.js';
+import { S3MediaStorage } from './infrastructure/storage/s3-storage.js';
 import { PgProfileRepository } from './modules/profile/profile.repository.js';
 import { ProfileService } from './modules/profile/profile.service.js';
 import { createAuditLog } from './modules/audit/audit-log.js';
 import { logger, setAuditSink } from './utils/logger.js';
-import path from 'node:path';
 
 const config = readConfig();
 const communicationConfig = readCommunicationConfig(config.nodeEnv);
@@ -72,7 +72,14 @@ const authService = new AuthService({
   config,
 });
 
-const media = new LocalMediaStorage(path.resolve(import.meta.dirname, '../storage/profile-media'));
+const storageConfig = readStorageConfig();
+const media = new S3MediaStorage(storageConfig);
+logger.info('storage initialized', {
+  driver: 's3',
+  bucket: storageConfig.bucket,
+  region: storageConfig.region,
+  prefix: storageConfig.prefix,
+});
 const profileService = new ProfileService(
   authService,
   new PgProfileRepository(pool),

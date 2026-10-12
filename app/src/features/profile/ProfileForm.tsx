@@ -296,8 +296,8 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
         <AppButton variant="outline" onPress={() => { if (photoId) void move(photoId, 1).then(() => setPhotoId(null)); }}>Move later</AppButton>
         <AppButton variant="outline" onPress={() => { if (photoId) void makePrimary(photoId); }}>Set as primary</AppButton>
         <AppButton variant="outline" onPress={() => { const uri = photoId ? previews[photoId] : null; setPhotoId(null); if (uri) setViewerUri(uri); }}>View photo</AppButton>
-        <AppButton onPress={() => { if (photoId) void profileService.removePhoto(photoId).then((next) => { setProfile(next); setPreviews((current) => { const updated = { ...current }; delete updated[photoId]; return updated; }); if (user?.id) invalidatePhoto(user.id); }).finally(() => setPhotoId(null)); }}>
-          {profile?.media.find((photo) => photo.id === photoId)?.isPrimary ? 'Remove primary photo' : 'Remove photo'}
+        <AppButton disabled={profile?.media.find((photo) => photo.id === photoId)?.isPrimary} onPress={() => { if (photoId) void profileService.removePhoto(photoId).then((next) => { setProfile(next); setPreviews((current) => { const updated = { ...current }; delete updated[photoId]; return updated; }); if (user?.id) invalidatePhoto(user.id); }).finally(() => setPhotoId(null)); }}>
+          {profile?.media.find((photo) => photo.id === photoId)?.isPrimary ? 'Primary photo cannot be removed' : 'Remove photo'}
         </AppButton>
       </AppBottomSheet>
       <PhotoViewer uri={viewerUri} onClose={() => setViewerUri(null)} />

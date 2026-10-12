@@ -261,21 +261,13 @@ export class PgProfileRepository implements ProfileRepository {
     if (!existing) {
       return null;
     }
-    await this.pool.query(
-      `UPDATE acc.m_profile_media SET deleted_at = NOW(), is_primary = FALSE WHERE id = $1 AND user_id = $2`,
+    const deleted = await this.pool.query(
+      `UPDATE acc.m_profile_media SET deleted_at = NOW(), is_primary = FALSE
+       WHERE id = $1 AND user_id = $2 AND is_primary = FALSE`,
       [mediaId, userId],
     );
-    if (existing.isPrimary) {
-      await this.pool.query(
-        `UPDATE acc.m_profile_media SET is_primary = TRUE
-         WHERE id = (
-           SELECT id FROM acc.m_profile_media
-           WHERE user_id = $1 AND deleted_at IS NULL
-           ORDER BY sort_order, created_at
-           LIMIT 1
-         )`,
-        [userId],
-      );
+    if ((deleted.rowCount ?? 0) === 0) {
+      return null;
     }
     return existing;
   }

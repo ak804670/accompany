@@ -175,9 +175,16 @@ export class ProfileService {
   }
 
   async removeMedia(userId: string, mediaId: string): Promise<ProfileRecord> {
+    const current = await this.repository.getMedia(userId, mediaId);
+    if (!current) {
+      throw new ProfileError('MEDIA_NOT_FOUND', 404, 'That photo was not found.');
+    }
+    if (current.isPrimary) {
+      throw new ProfileError('VALIDATION_ERROR', 400, 'Set another photo as primary before removing this one.');
+    }
     const removed = await this.repository.deleteMedia(userId, mediaId);
     if (!removed) {
-      throw new ProfileError('MEDIA_NOT_FOUND', 404, 'That photo was not found.');
+      throw new ProfileError('VALIDATION_ERROR', 400, 'Set another photo as primary before removing this one.');
     }
     await this.storage.remove(removed.storageKey);
     return this.get(userId);
