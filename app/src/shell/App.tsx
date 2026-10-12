@@ -20,6 +20,7 @@ import { AuthProvider } from '@/features/auth';
 import { ProfileProvider } from '@/features/profile/ProfileProvider';
 import { RootNavigator } from '@/navigation';
 import { AppErrorBoundary } from '@/shell/AppErrorBoundary';
+import { FirstLaunchPermissions } from '@/shell/FirstLaunchPermissions';
 import { reportError } from '@/services/monitoring/report-error';
 import { ThemeProvider } from '@/theme';
 
@@ -59,7 +60,9 @@ export function App() {
         <SafeAreaProvider>
           <AuthProvider>
             <ProfileProvider>
-            <RootNavigator />
+            <FirstLaunchPermissions>
+              <RootNavigator />
+            </FirstLaunchPermissions>
             <ActiveCallScreen />
             <CallRatingDialog />
             <AppToastHost />

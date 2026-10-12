@@ -334,6 +334,7 @@ export function ChatScreen({ conversationId, name, personId, online, onCall, hig
           url: response.url,
           token: response.token,
           roomName: callData.roomName,
+          video: kind === 'video',
         } : undefined,
       });
       setCallNotice(null);

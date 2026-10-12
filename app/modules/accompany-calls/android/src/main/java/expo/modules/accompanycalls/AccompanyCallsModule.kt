@@ -20,6 +20,9 @@ class AccompanyCallsModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("AccompanyCalls")
     Events("onCallAction")
+    AsyncFunction("requestPrivacyPermissions") {
+      mapOf("camera" to false, "microphone" to false, "notifications" to false)
+    }
     OnCreate { instance = this@AccompanyCallsModule }
     Function("showIncoming") { callId: String, name: String, video: Boolean ->
       val context = appContext.reactContext ?: return@Function

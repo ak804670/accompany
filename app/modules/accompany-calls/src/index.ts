@@ -3,6 +3,7 @@ import { requireNativeModule } from 'expo-modules-core';
 type CallAction = { action: 'answer' | 'reject' | 'hangup'; callId: string };
 
 type AccompanyCallsModule = {
+  requestPrivacyPermissions(): Promise<{ camera: boolean; microphone: boolean; notifications: boolean }>;
   showIncoming(callId: string, name: string, video: boolean): void;
   showOutgoing(callId: string, name: string, video: boolean): void;
   showConnected(callId: string, name: string, video: boolean): void;

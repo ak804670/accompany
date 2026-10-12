@@ -17,6 +17,8 @@ import { profileService } from '@/features/profile/services/profile.service';
 import { prepareProfileImage } from '@/features/profile/services/prepare-image';
 import type { ProfileInterest } from '@/features/profile/types';
 import { profileImageConfig } from '@/services/media/image-config';
+import { PhotoViewer } from '@/components/profile/PhotoViewer';
+import { invalidatePhoto } from '@/components/home/photo-cache';
 
 type Tag = { id?: string; name: string };
 type Rates = { chat: string; audio: string; video: string };
@@ -47,6 +49,7 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [photoId, setPhotoId] = useState<string | null>(null);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
 
   useEffect(() => {
     void getOrDetectLocationName().then((loc) => {
@@ -179,12 +182,14 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
     if (result.canceled || !asset) return;
     const prepared = await prepareProfileImage(asset.uri);
     setProfile(await profileService.uploadPhoto(prepared.bytes, prepared.contentType));
+    if (user?.id) invalidatePhoto(user.id);
   }
 
   async function makePrimary(mediaId: string) {
     const media = profile?.media ?? [];
     const order = [mediaId, ...media.map((item) => item.id).filter((id) => id !== mediaId)];
     setProfile(await profileService.reorderPhotos(order));
+    if (user?.id) invalidatePhoto(user.id);
     setPhotoId(null);
   }
 
@@ -217,6 +222,7 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
     <View className="gap-lg pb-xl">
       <View className="gap-sm">
         <AppText variant="label">Profile photos</AppText>
+        <AppText variant="caption" tone="muted">Your primary photo is shown as your profile picture. Select any photo to view, set it as primary, or remove it.</AppText>
         <View className="flex-row flex-wrap gap-sm">
           {(profile?.media ?? []).map((photo) => (
             <Pressable key={photo.id} accessibilityRole="button" accessibilityLabel={photo.isPrimary ? 'Primary photo' : 'Photo'} className="overflow-hidden rounded-sm border border-border" onPress={() => setPhotoId(photo.id)}>
@@ -289,8 +295,12 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
         <AppButton variant="outline" onPress={() => { if (photoId) void move(photoId, -1).then(() => setPhotoId(null)); }}>Move earlier</AppButton>
         <AppButton variant="outline" onPress={() => { if (photoId) void move(photoId, 1).then(() => setPhotoId(null)); }}>Move later</AppButton>
         <AppButton variant="outline" onPress={() => { if (photoId) void makePrimary(photoId); }}>Set as primary</AppButton>
-        <AppButton onPress={() => { if (photoId) void profileService.removePhoto(photoId).then(setProfile).finally(() => setPhotoId(null)); }}>Remove</AppButton>
+        <AppButton variant="outline" onPress={() => { const uri = photoId ? previews[photoId] : null; setPhotoId(null); if (uri) setViewerUri(uri); }}>View photo</AppButton>
+        <AppButton onPress={() => { if (photoId) void profileService.removePhoto(photoId).then((next) => { setProfile(next); setPreviews((current) => { const updated = { ...current }; delete updated[photoId]; return updated; }); if (user?.id) invalidatePhoto(user.id); }).finally(() => setPhotoId(null)); }}>
+          {profile?.media.find((photo) => photo.id === photoId)?.isPrimary ? 'Remove primary photo' : 'Remove photo'}
+        </AppButton>
       </AppBottomSheet>
+      <PhotoViewer uri={viewerUri} onClose={() => setViewerUri(null)} />
     </View>
   );
 }

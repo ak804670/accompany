@@ -108,6 +108,7 @@ export function ActiveCallScreen() {
               cameraEnabled={call.cameraEnabled}
               remoteCameraEnabled={call.remoteCameraEnabled}
               isFrontCamera={call.isFrontCamera}
+              room={callManager.getRoom()}
               onFlipCamera={() => callManager.flipCamera()}
               onToggleOverlay={() => setShowControls((prev) => !prev)}
             />

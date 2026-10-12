@@ -10,4 +10,5 @@ export const preferenceKeys = {
   userPreferences: 'user.preferences',
   locationName: 'user.locationName',
   gender: 'user.gender',
+  privacyPermissionsIntroduced: 'app.privacyPermissionsIntroduced',
 } as const;

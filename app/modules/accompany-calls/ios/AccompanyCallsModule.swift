@@ -1,5 +1,7 @@
 import ExpoModulesCore
 import CallKit
+import AVFoundation
+import UserNotifications
 
 public class AccompanyCallsModule: Module {
   private let provider: CXProvider
@@ -18,6 +20,13 @@ public class AccompanyCallsModule: Module {
   public func definition() -> ModuleDefinition {
     Name("AccompanyCalls")
     Events("onCallAction")
+
+    AsyncFunction("requestPrivacyPermissions") { () async -> [String: Bool] in
+      let camera = await AVCaptureDevice.requestAccess(for: .video)
+      let microphone = await AVCaptureDevice.requestAccess(for: .audio)
+      let notifications = await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
+      return ["camera": camera, "microphone": microphone, "notifications": notifications]
+    }
 
     Function("showIncoming") { (callId: String, name: String, video: Bool) in
       self.report(callId: callId, name: name, video: video, incoming: true)

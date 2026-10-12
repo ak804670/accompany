@@ -82,6 +82,10 @@ export class CallManager {
     return this.media.current();
   }
 
+  getRoom() {
+    return this.media.getRoom();
+  }
+
   presentOutgoing(input: {
     id: string;
     name: string;
@@ -156,7 +160,7 @@ export class CallManager {
     try {
       const result = await callService.accept(callId);
       if (!result.token || !result.url) throw new Error('Call media credentials are missing');
-      await this.media.connect({ callId, url: result.url, token: result.token, roomName: result.call.roomName });
+      await this.media.connect({ callId, url: result.url, token: result.token, roomName: result.call.roomName, video: call.video });
       this.replace({
         ...call,
         phase: 'CONNECTED',
@@ -218,7 +222,11 @@ export class CallManager {
 
   toggleCamera(): void {
     if (!this.current) return;
-    this.replace({ ...this.current, cameraEnabled: !this.current.cameraEnabled });
+    const cameraEnabled = !this.current.cameraEnabled;
+    this.replace({ ...this.current, cameraEnabled });
+    void this.media.setCameraEnabled(cameraEnabled).catch(() => {
+      if (this.current) this.replace({ ...this.current, cameraEnabled: !cameraEnabled });
+    });
   }
 
   toggleSpeaker(): void {
@@ -229,7 +237,11 @@ export class CallManager {
 
   flipCamera(): void {
     if (!this.current) return;
-    this.replace({ ...this.current, isFrontCamera: !this.current.isFrontCamera });
+    const isFrontCamera = !this.current.isFrontCamera;
+    this.replace({ ...this.current, isFrontCamera });
+    void this.media.flipCamera(isFrontCamera).catch(() => {
+      if (this.current) this.replace({ ...this.current, isFrontCamera: !isFrontCamera });
+    });
   }
 
   setSpeaking(isSpeaking: boolean): void {

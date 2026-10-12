@@ -69,6 +69,7 @@ export function CallsTab({ width, query, onOpen }: CallsTabProps) {
           url: response.url,
           token: response.token,
           roomName: callData.roomName,
+          video: kind === 'video',
         } : undefined,
       });
       setNotice(null);

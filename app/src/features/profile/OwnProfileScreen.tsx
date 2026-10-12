@@ -71,7 +71,7 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
       <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-lg px-lg py-md pb-xl">
       {!isAnonymous ? <>
       <View className="items-center gap-sm">
-        <PersonAvatar userId={user?.id} name={name} size={96} />
+        <PersonAvatar userId={user?.id} name={name} size={96} interactive reloadKey={profile?.media.find((photo) => photo.isPrimary)?.id ?? 'no-primary'} />
         <AppText variant="h3">{name}</AppText>
         {locationName ? (
           <View className="flex-row items-center gap-xs">

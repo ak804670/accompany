@@ -146,7 +146,7 @@ export function PersonScreen({ userId, onBack, onConversation }: PersonScreenPro
       <ScrollView className="flex-1 px-lg" contentContainerClassName="py-md pb-lg">
         {person ? (
           <View className="flex-1 gap-md">
-            <PersonAvatar userId={person.userId} name={person.name} size={120} />
+            <PersonAvatar userId={person.userId} name={person.name} size={120} interactive />
             <AppText variant="h1">{person.name}</AppText>
             {person.supportRole && person.supportRole !== 'friendly' ? <AppText variant="bodyM" tone="primary">{person.supportRole[0].toUpperCase() + person.supportRole.slice(1)}{person.supportRole === 'expert' && person.expertSubject ? ` · ${person.expertSubject}` : ''}{person.verified ? ' · Verified' : ''}</AppText> : null}
             <View className="flex-row items-center gap-2">

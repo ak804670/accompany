@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Image, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 
 import { demoProfilePhoto } from '@/assets/photos/demo-profiles';
 import { cachedPhoto, loadPhoto } from '@/components/home/photo-cache';
 import { AppText } from '@/components/design-system/AppText';
 import { peopleService } from '@/features/home/people.service';
+import { PhotoViewer } from '@/components/profile/PhotoViewer';
 
 type PersonAvatarProps = {
   userId?: string | null;
@@ -12,10 +13,13 @@ type PersonAvatarProps = {
   size?: number;
   wide?: boolean;
   fill?: boolean;
+  interactive?: boolean;
+  reloadKey?: string | number;
 };
 
-export function PersonAvatar({ userId, name, size = 64, wide = false, fill = false }: PersonAvatarProps) {
+export function PersonAvatar({ userId, name, size = 64, wide = false, fill = false, interactive = false, reloadKey }: PersonAvatarProps) {
   const [uri, setUri] = useState<string | null>(userId ? cachedPhoto(userId) ?? null : null);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -31,7 +35,7 @@ export function PersonAvatar({ userId, name, size = 64, wide = false, fill = fal
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [reloadKey, userId]);
 
   const demo = userId ? demoProfilePhoto(userId) : undefined;
   const frame = fill
@@ -40,7 +44,7 @@ export function PersonAvatar({ userId, name, size = 64, wide = false, fill = fal
       ? { width: '100%' as const, height: size }
       : { width: size, height: size, borderRadius: 8 };
 
-  return (
+  const avatar = (
     <View className="items-center justify-center overflow-hidden bg-muted" style={frame}>
       {uri ? (
         <Image accessibilityIgnoresInvertColors source={{ uri }} style={frame} />
@@ -51,4 +55,13 @@ export function PersonAvatar({ userId, name, size = 64, wide = false, fill = fal
       )}
     </View>
   );
+
+  return interactive ? (
+    <>
+      <Pressable accessibilityRole="button" accessibilityLabel={`View ${name}'s profile photo`} onPress={() => setViewerOpen(true)}>
+        {avatar}
+      </Pressable>
+      <PhotoViewer uri={viewerOpen ? uri ?? (demo ? Image.resolveAssetSource(demo).uri : null) : null} onClose={() => setViewerOpen(false)} />
+    </>
+  ) : avatar;
 }

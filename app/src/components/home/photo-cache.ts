@@ -9,6 +9,11 @@ export function rememberPhoto(userId: string, uri: string | null): void {
   photos.set(userId, uri);
 }
 
+export function invalidatePhoto(userId: string): void {
+  photos.delete(userId);
+  waiters.delete(userId);
+}
+
 export function prefetchPhotos(userIds: string[], fetcher: (userId: string) => Promise<string | null>): Promise<void> {
   return Promise.all(userIds.map((userId) => loadPhoto(userId, () => fetcher(userId)))).then(() => undefined);
 }
