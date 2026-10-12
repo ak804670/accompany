@@ -157,8 +157,20 @@ export function ProfileForm({ onDirtyChange }: { onDirtyChange?: (dirty: boolean
           // The server already stored the rates.
         }
       }
-      if (next) setProfile(next);
-      setSavedRates(rates);
+      if (next) {
+        setProfile(next);
+        setName(next.displayName ?? '');
+        setBio(next.bio ?? '');
+        setSelected(next.interests.map((item) => ({ id: item.id, name: item.name })));
+      }
+      if (saved) {
+        const canonicalRates = { chat: rateText(saved.chat), audio: rateText(saved.audio), video: rateText(saved.video) };
+        setRates(canonicalRates);
+        setSavedRates(canonicalRates);
+      } else {
+        setSavedRates(rates);
+      }
+      onDirtyChange?.(false);
       setError(null);
       if (saved) refreshDiscovery();
     } catch (caught) {
