@@ -280,6 +280,14 @@ export class PgProfileRepository implements ProfileRepository {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
+      // The partial unique index is immediate, so clear the previous primary
+      // before the reorder promotes the first item in the requested order.
+      await client.query(
+        `UPDATE acc.m_profile_media
+         SET is_primary = FALSE
+         WHERE user_id = $1 AND deleted_at IS NULL AND is_primary`,
+        [userId],
+      );
       for (const [index, mediaId] of mediaIds.entries()) {
         await client.query(
           `UPDATE acc.m_profile_media
