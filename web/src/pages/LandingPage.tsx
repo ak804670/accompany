@@ -288,7 +288,7 @@ export const LandingPage: React.FC = () => {
                 <div className="absolute -top-4 -right-6 bg-[#FFFCF8] dark:bg-[#1C1A17] border border-[#E3DBD1] dark:border-[#3A342E] px-3.5 py-2 rounded-2xl shadow-lg flex items-center gap-2 animate-float-delayed">
                   <ShieldCheck className="w-4 h-4 text-[#29995C]" />
                   <span className="text-xs font-bold text-[#1C1916] dark:text-[#F3EEE6]">
-                    Aadhaar Verified Listeners
+                    Verified Listeners
                   </span>
                 </div>
               </div>
@@ -403,7 +403,7 @@ export const LandingPage: React.FC = () => {
       {/* =========================================================================
           LIVE COMPANIONS SHOWCASE (#companions)
           ========================================================================= */}
-      <section id="companions" className="py-20 bg-[#FFFCF8] dark:bg-[#161412] border-y border-[#E3DBD1] dark:border-[#3A342E]">
+      {/* <section id="companions" className="py-20 bg-[#FFFCF8] dark:bg-[#161412] border-y border-[#E3DBD1] dark:border-[#3A342E]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
             <div>
@@ -427,14 +427,12 @@ export const LandingPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Companions Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {filteredCompanions.map((comp) => (
               <CompanionCard key={comp.id} companion={comp} />
             ))}
           </div>
 
-          {/* Become a Companion Callout */}
           <div className="mt-12 p-6 rounded-3xl bg-[#F7F4EF] dark:bg-[#1C1A17] border border-[#E3DBD1] dark:border-[#3A342E] flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3 text-left">
               <div className="w-10 h-10 rounded-2xl bg-[#FDE4ED] text-[#C7377A] flex items-center justify-center shrink-0">
@@ -458,7 +456,7 @@ export const LandingPage: React.FC = () => {
             </Link>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* =========================================================================
           HOW IT WORKS (#how-it-works)
