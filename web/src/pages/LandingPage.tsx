@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ShieldCheck,
-  Heart,
+  // Heart,
   Lock,
   Clock,
   Coins,
@@ -12,11 +12,11 @@ import {
   Mic,
   Volume2,
 } from 'lucide-react';
-import companionsData from '@/data/companions.json';
+// import companionsData from '@/data/companions.json';
 import blogsData from '@/data/blogs.json';
-import type { Companion } from '@/types/companion';
+// import type { Companion } from '@/types/companion';
 import type { BlogPost } from '@/types/blog';
-import { CompanionCard } from '@/components/common/CompanionCard';
+// import { CompanionCard } from '@/components/common/CompanionCard';
 import { BlogCard } from '@/components/common/BlogCard';
 import { GooglePlayButton } from '@/components/common/GooglePlayButton';
 import { useModal } from '@/context/ModalContext';
@@ -29,7 +29,7 @@ import {
 
 export const LandingPage: React.FC = () => {
   const { openDownloadModal } = useModal();
-  const companions: Companion[] = companionsData as Companion[];
+  // const companions: Companion[] = companionsData as Companion[];
   const blogs: BlogPost[] = (blogsData as BlogPost[]).slice(0, 3);
 
   // Emotional topic selector state
@@ -73,16 +73,16 @@ export const LandingPage: React.FC = () => {
     },
   ];
 
-  const filteredCompanions =
-    selectedTopic === 'All'
-      ? companions
-      : companions.filter((c) =>
-          c.specialties.some(
-            (s) =>
-              s.toLowerCase().includes(selectedTopic.toLowerCase()) ||
-              selectedTopic.toLowerCase().includes(s.toLowerCase())
-          )
-        );
+  // const filteredCompanions =
+  //   selectedTopic === 'All'
+  //     ? companions
+  //     : companions.filter((c) =>
+  //         c.specialties.some(
+  //           (s) =>
+  //             s.toLowerCase().includes(selectedTopic.toLowerCase()) ||
+  //             selectedTopic.toLowerCase().includes(s.toLowerCase())
+  //         )
+  //       );
 
   return (
     <div className="relative overflow-hidden">

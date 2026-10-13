@@ -5,28 +5,28 @@
   <!-- Core Pages -->
   <url>
     <loc>https://accompanyapp.in/</loc>
-    <lastmod>2026-10-05</lastmod>
+    <lastmod>2026-10-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
 
   <url>
     <loc>https://accompanyapp.in/blogs</loc>
-    <lastmod>2026-10-05</lastmod>
+    <lastmod>2026-10-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
     <loc>https://accompanyapp.in/contact</loc>
-    <lastmod>2026-10-05</lastmod>
+    <lastmod>2026-10-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
     <loc>https://accompanyapp.in/terms</loc>
-    <lastmod>2026-10-05</lastmod>
+    <lastmod>2026-10-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
