@@ -51,3 +51,4 @@ coverage/
 # IDE
 .idea/
 .vscode/
+app/google-services.json
