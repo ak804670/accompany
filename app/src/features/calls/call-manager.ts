@@ -39,7 +39,17 @@ export class CallManager {
   constructor(
     private readonly platform: CallPlatform = createNativePlatform(),
     private readonly media = new LiveKitAdapter(),
-  ) {}
+  ) {
+    this.media.setCallbacks({
+      onSpeakingChange: (isSpeaking) => this.setSpeaking(isSpeaking),
+      onRemoteCameraChange: (enabled) => this.setRemoteCameraEnabled(enabled),
+      onDisconnect: () => {
+        if (this.current && this.current.phase === 'CONNECTED') {
+          void this.endCall(this.current.id);
+        }
+      },
+    });
+  }
 
   start(): void {
     this.unsubscribeNative?.();
