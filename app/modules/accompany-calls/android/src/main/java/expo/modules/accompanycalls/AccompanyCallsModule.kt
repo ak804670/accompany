@@ -6,13 +6,19 @@ import android.media.RingtoneManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.OutcomeReceiver
+import android.telecom.CallAudioState
+import android.telecom.CallEndpoint
+import android.telecom.CallEndpointException
 import android.telecom.Connection
 import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
 import android.telecom.TelecomManager
+import android.util.Log
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
@@ -37,7 +43,10 @@ class AccompanyCallsModule : Module() {
     Function("showConnected") { callId: String, name: String, video: Boolean ->
       val context = appContext.reactContext ?: return@Function
       CallNotifier.show(context, callId, name, video, incoming = false)
-      TelecomBridge.markActive(callId)
+      TelecomBridge.markActive(callId, video)
+    }
+    Function("setAudioRoute") { callId: String, speakerOn: Boolean ->
+      TelecomBridge.setAudioRoute(callId, speakerOn)
     }
     Function("dismiss") { callId: String ->
       val context = appContext.reactContext ?: return@Function
@@ -217,20 +226,96 @@ object TelecomBridge {
     connections[callId] = connection
   }
 
-  fun markActive(callId: String) {
-    connections[callId]?.setActive()
+  fun markActive(callId: String, speakerOn: Boolean) {
+    connections[callId]?.let { connection ->
+      connection.setActive()
+      connection.setAudioRoute(speakerOn)
+    }
+  }
+
+  fun setAudioRoute(callId: String, speakerOn: Boolean): Boolean {
+    return connections[callId]?.setAudioRoute(speakerOn) ?: false
   }
 
   fun disconnect(callId: String) {
-    connections.remove(callId)?.setDisconnected(android.telecom.DisconnectCause(android.telecom.DisconnectCause.LOCAL))
-    connections[callId]?.destroy()
+    connections.remove(callId)?.let { connection ->
+      connection.setDisconnected(android.telecom.DisconnectCause(android.telecom.DisconnectCause.LOCAL))
+      connection.destroy()
+    }
   }
 }
 
-class AccompanyConnection(private val callId: String) : android.telecom.Connection() {
+class AccompanyConnection(
+  private val callId: String,
+  private val context: Context,
+) : android.telecom.Connection() {
+  private var availableEndpoints: List<CallEndpoint> = emptyList()
+  private var requestedSpeakerRoute: Boolean? = null
+
   init {
     connectionProperties = PROPERTY_SELF_MANAGED
+    setAudioModeIsVoip(true)
     setCallerDisplayName(callId, android.telecom.TelecomManager.PRESENTATION_ALLOWED)
+  }
+
+  fun setAudioRoute(speakerOn: Boolean): Boolean {
+    requestedSpeakerRoute = speakerOn
+    if (Build.VERSION.SDK_INT >= 34) {
+      try {
+        requestModernAudioRoute(speakerOn)
+      } catch (error: RuntimeException) {
+        Log.e(TAG, "Could not request Telecom audio endpoint for $callId", error)
+        @Suppress("DEPRECATION")
+        setAudioRoute(if (speakerOn) CallAudioState.ROUTE_SPEAKER else CallAudioState.ROUTE_EARPIECE)
+      }
+      return true
+    }
+    if (Build.VERSION.SDK_INT >= 26) {
+      @Suppress("DEPRECATION")
+      setAudioRoute(if (speakerOn) CallAudioState.ROUTE_SPEAKER else CallAudioState.ROUTE_EARPIECE)
+      return true
+    }
+
+    // Connection.setAudioRoute was added in API 26. On older supported devices,
+    // retain the legacy route fallback while preserving Telecom routing above API 25.
+    val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    @Suppress("DEPRECATION")
+    audioManager.isSpeakerphoneOn = speakerOn
+    return true
+  }
+
+  override fun onAvailableCallEndpointsChanged(endpoints: MutableList<CallEndpoint>) {
+    super.onAvailableCallEndpointsChanged(endpoints)
+    availableEndpoints = endpoints
+    requestedSpeakerRoute?.let(::requestModernAudioRoute)
+  }
+
+  @Suppress("NewApi")
+  private fun requestModernAudioRoute(speakerOn: Boolean) {
+    val desiredType = if (speakerOn) CallEndpoint.TYPE_SPEAKER else CallEndpoint.TYPE_EARPIECE
+    val endpoint = availableEndpoints.firstOrNull { it.endpointType == desiredType }
+    if (endpoint == null) {
+      return
+    }
+
+    requestCallEndpointChange(
+      endpoint,
+      context.mainExecutor,
+      object : OutcomeReceiver<Void, CallEndpointException> {
+        override fun onResult(result: Void?) {
+        }
+
+        override fun onError(error: CallEndpointException) {
+          Log.e(TAG, "Telecom rejected audio endpoint request for $callId: ${endpoint.endpointName}", error)
+          @Suppress("DEPRECATION")
+          setAudioRoute(if (speakerOn) CallAudioState.ROUTE_SPEAKER else CallAudioState.ROUTE_EARPIECE)
+        }
+      },
+    )
+  }
+
+  private companion object {
+    const val TAG = "AccompanyCalls"
   }
 
   override fun onAnswer() {
@@ -254,7 +339,7 @@ class AccompanyConnection(private val callId: String) : android.telecom.Connecti
 class AccompanyConnectionService : android.telecom.ConnectionService() {
   override fun onCreateIncomingConnection(connectionManagerPhoneAccount: PhoneAccountHandle?, request: android.telecom.ConnectionRequest?): android.telecom.Connection {
     val callId = request?.extras?.getString("callId") ?: return Connection.createFailedConnection(android.telecom.DisconnectCause(android.telecom.DisconnectCause.ERROR))
-    val connection = AccompanyConnection(callId)
+    val connection = AccompanyConnection(callId, this)
     connection.setRinging()
     TelecomBridge.remember(callId, connection)
     return connection
@@ -262,7 +347,7 @@ class AccompanyConnectionService : android.telecom.ConnectionService() {
 
   override fun onCreateOutgoingConnection(connectionManagerPhoneAccount: PhoneAccountHandle?, request: android.telecom.ConnectionRequest?): android.telecom.Connection {
     val callId = request?.extras?.getString("callId") ?: request?.address?.schemeSpecificPart ?: return Connection.createFailedConnection(android.telecom.DisconnectCause(android.telecom.DisconnectCause.ERROR))
-    val connection = AccompanyConnection(callId)
+    val connection = AccompanyConnection(callId, this)
     connection.setDialing()
     TelecomBridge.remember(callId, connection)
     return connection

@@ -7,6 +7,7 @@ type AccompanyCallsModule = {
   showIncoming(callId: string, name: string, video: boolean): void;
   showOutgoing(callId: string, name: string, video: boolean): void;
   showConnected(callId: string, name: string, video: boolean): void;
+  setAudioRoute(callId: string, speakerOn: boolean): boolean;
   dismiss(callId: string): void;
   addListener(event: 'onCallAction', listener: (payload: CallAction) => void): { remove(): void };
 };

@@ -241,8 +241,11 @@ export class CallManager {
 
   toggleSpeaker(): void {
     if (!this.current) return;
-    this.media.setSpeakerOn(!this.current.speakerOn);
-    this.replace({ ...this.current, speakerOn: !this.current.speakerOn });
+    const speakerOn = !this.current.speakerOn;
+    if (!this.platform.setAudioRoute?.(this.current.id, speakerOn)) {
+      this.media.setSpeakerOn(speakerOn);
+    }
+    this.replace({ ...this.current, speakerOn });
   }
 
   flipCamera(): void {
@@ -283,6 +286,10 @@ export class CallManager {
         this.pendingRating = { callId, userId: ratedUserId, name: ratedName };
         this.listeners.forEach((listener) => listener());
       }
+      return;
+    }
+    if (phase === 'CONNECTING' && this.current.phase === 'RINGING') {
+      this.replace({ ...this.current, phase: 'CONNECTING' });
       return;
     }
     if (phase === 'CONNECTED' && this.current.phase !== 'CONNECTED') {

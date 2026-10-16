@@ -15,6 +15,7 @@ type NativeModule = {
   showIncoming(callId: string, name: string, video: boolean): void;
   showOutgoing(callId: string, name: string, video: boolean): void;
   showConnected(callId: string, name: string, video: boolean): void;
+  setAudioRoute?(callId: string, speakerOn: boolean): boolean;
   dismiss(callId: string): void;
   addListener(event: 'onCallAction', listener: (payload: { action: NativeCallAction; callId: string }) => void): { remove(): void };
 };
@@ -52,6 +53,13 @@ export function createNativePlatform(): CallPlatform {
     showIncoming: (call) => show(call, 'incoming'),
     showOutgoing: (call) => show(call, 'outgoing'),
     showConnected: (call) => show(call, 'connected'),
+    setAudioRoute: (callId, speakerOn) => {
+      try {
+        return native.setAudioRoute?.(callId, speakerOn) ?? false;
+      } catch {
+        return false;
+      }
+    },
     dismiss: (callId) => {
       try {
         native.dismiss(callId);

@@ -1,9 +1,8 @@
-import { AudioSession } from '@livekit/react-native';
+import { AndroidAudioTypePresets, AudioSession } from '@livekit/react-native';
 import {
   Room,
   RoomEvent,
   Track,
-  type RemoteParticipant,
   type RemoteTrackPublication,
 } from 'livekit-client';
 import { PermissionsAndroid, Platform } from 'react-native';
@@ -42,14 +41,17 @@ export class LiveKitAdapter {
         if (camera !== PermissionsAndroid.RESULTS.GRANTED) throw new Error('Camera permission was denied');
       }
     }
-    const room = new Room({ autoSubscribe: true });
+    const room = new Room();
     this.room = room;
     this.session = session;
     this.attachRoomListeners(room);
     try {
+      const primaryOutput = session.video ? 'speaker' : 'earpiece';
+      const secondaryOutput = session.video ? 'earpiece' : 'speaker';
       await AudioSession.configureAudio({
         android: {
-          preferredOutputList: ['speaker'],
+          preferredOutputList: ['bluetooth', 'headset', primaryOutput, secondaryOutput],
+          audioTypeOptions: AndroidAudioTypePresets.communication,
         },
         ios: {
           defaultOutput: 'speaker',
@@ -100,22 +102,16 @@ export class LiveKitAdapter {
   private attachRoomListeners(room: Room): void {
     room.on(
       RoomEvent.TrackSubscribed,
-      (track: { kind: string; sid: string }, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
-        console.log(`[LiveKit] TrackSubscribed: ${track.kind} from ${participant.identity} (sid: ${track.sid})`);
+      (track: { kind: string }, publication: RemoteTrackPublication) => {
         if (track.kind === Track.Kind.Video && publication.source === Track.Source.Camera) {
           this.callbacks.onRemoteCameraChange?.(true);
         }
       },
     );
 
-    room.on(RoomEvent.TrackPublished, (publication: RemoteTrackPublication, participant: RemoteParticipant) => {
-      console.log(`[LiveKit] TrackPublished: ${publication.kind} from ${participant.identity}`);
-    });
-
     room.on(
       RoomEvent.TrackMuted,
       (publication: RemoteTrackPublication, participant: { identity: string }) => {
-        console.log(`[LiveKit] TrackMuted: ${publication.kind} (source: ${publication.source}) from ${participant.identity}`);
         if (publication.source === Track.Source.Camera && participant !== room.localParticipant) {
           this.callbacks.onRemoteCameraChange?.(false);
         }
@@ -125,7 +121,6 @@ export class LiveKitAdapter {
     room.on(
       RoomEvent.TrackUnmuted,
       (publication: RemoteTrackPublication, participant: { identity: string }) => {
-        console.log(`[LiveKit] TrackUnmuted: ${publication.kind} (source: ${publication.source}) from ${participant.identity}`);
         if (publication.source === Track.Source.Camera && participant !== room.localParticipant) {
           this.callbacks.onRemoteCameraChange?.(true);
         }
@@ -138,7 +133,6 @@ export class LiveKitAdapter {
     });
 
     room.on(RoomEvent.Disconnected, () => {
-      console.log('[LiveKit] Room disconnected');
       this.callbacks.onDisconnect?.();
     });
   }

@@ -12,6 +12,7 @@ export type CallPlatform = {
   showIncoming(call: NativeCall): void;
   showOutgoing(call: NativeCall): void;
   showConnected(call: NativeCall): void;
+  setAudioRoute?(callId: string, speakerOn: boolean): boolean;
   dismiss(callId: string): void;
   subscribe(listener: (action: NativeCallAction, callId: string) => void): () => void;
 };

@@ -36,7 +36,10 @@ export function ActiveCallScreen() {
   }, [call?.phase, call?.startedAt]);
 
   useEffect(() => {
-    if (!call?.id || call.phase !== 'CONNECTED') return;
+    if (
+      !call?.id ||
+      (call.phase !== 'RINGING' && call.phase !== 'CONNECTING' && call.phase !== 'CONNECTED')
+    ) return;
     const callId = call.id;
     let active = true;
 
@@ -45,13 +48,12 @@ export function ActiveCallScreen() {
         .get(callId)
         .then((callData) => {
           if (!active) return;
-          if (callData?.status && callData.status !== 'CONNECTED' && callData.status !== 'CONNECTING') {
-            callManager.syncRemote(callData.status);
-          }
+          if (callData?.status) callManager.syncRemote(callData.status);
         })
         .catch(() => undefined);
     };
 
+    pollStatus();
     const interval = setInterval(pollStatus, 2500);
     return () => {
       active = false;

@@ -41,7 +41,7 @@ export function CallHeader({ name, status, durationSeconds, rate, video = false 
           </>
         ) : (
           <AppText variant="caption" className="font-medium text-white/80">
-            {status === 'RINGING' ? 'Ringing...' : status === 'CONNECTING' ? 'Connecting...' : status}
+            {status === 'RINGING' ? 'Ringing...' : status === 'CONNECTING' ? 'Accepted · Connecting...' : status}
           </AppText>
         )}
 
