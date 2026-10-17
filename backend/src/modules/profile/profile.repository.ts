@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 
 import { interestSlug, normalizeInterestName } from '../shell/interest-names.js';
-import type { Interest, OnboardingStep, ProfileMedia, ProfileRecord, StoredMedia } from './profile.types.js';
+import type { CredentialStatus, Interest, OnboardingStep, ProfessionalRole, ProfileMedia, ProfileRecord, StoredCredential, StoredMedia } from './profile.types.js';
 
 export type ProfileWrite = {
   displayName?: string;
@@ -30,6 +30,11 @@ export interface ProfileRepository {
   reorderMedia(userId: string, mediaIds: string[]): Promise<boolean>;
   getRates(userId: string): Promise<{ chat: number | null; audio: number | null; video: number | null }>;
   saveRates(userId: string, rates: { chat?: number; audio?: number; video?: number }): Promise<{ chat: number | null; audio: number | null; video: number | null }>;
+  setCompanionOffline(userId: string): Promise<void>;
+  findApprovedCredential(userId: string, role: ProfessionalRole, expertSubject: string | null): Promise<StoredCredential | null>;
+  addCredential(credential: StoredCredential): Promise<void>;
+  deleteLatestPendingCredential(userId: string): Promise<StoredCredential | null>;
+  reviewLatestCredential(userId: string, status: CredentialStatus): Promise<StoredCredential | null>;
 }
 
 type ProfileRow = {
@@ -64,6 +69,26 @@ function contentTypeForKey(storageKey: string): string {
     return 'image/webp';
   }
   return 'image/jpeg';
+}
+
+function credentialFrom(row: {
+  id: string;
+  user_id: string;
+  storage_key: string;
+  content_type: string;
+  support_role: ProfessionalRole;
+  expert_subject: string | null;
+  status: CredentialStatus;
+}): StoredCredential {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    storageKey: row.storage_key,
+    contentType: row.content_type,
+    supportRole: row.support_role,
+    expertSubject: row.expert_subject,
+    status: row.status,
+  };
 }
 
 function dateOnly(value: Date | null): string | null {
@@ -345,6 +370,68 @@ export class PgProfileRepository implements ProfileRepository {
       client.release();
     }
     return this.getRates(userId);
+  }
+
+  async setCompanionOffline(userId: string): Promise<void> {
+    await this.pool.query(
+      `UPDATE acc.m_companion_profiles
+       SET is_available = FALSE, availability_status = 'offline'
+       WHERE user_id = $1`,
+      [userId],
+    );
+  }
+
+  async findApprovedCredential(userId: string, role: ProfessionalRole, expertSubject: string | null): Promise<StoredCredential | null> {
+    const result = await this.pool.query(
+      `SELECT id, user_id, storage_key, content_type, support_role, expert_subject, status
+       FROM acc.m_support_credentials
+       WHERE user_id = $1 AND support_role = $2 AND expert_subject IS NOT DISTINCT FROM $3
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [userId, role, expertSubject],
+    );
+    const row = result.rows[0];
+    if (!row || row.status !== 'approved') return null;
+    return credentialFrom(row);
+  }
+
+  async addCredential(credential: StoredCredential): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO acc.m_support_credentials (id, user_id, storage_key, content_type, support_role, expert_subject, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [credential.id, credential.userId, credential.storageKey, credential.contentType, credential.supportRole, credential.expertSubject, credential.status],
+    );
+  }
+
+  async deleteLatestPendingCredential(userId: string): Promise<StoredCredential | null> {
+    const result = await this.pool.query(
+      `DELETE FROM acc.m_support_credentials
+       WHERE id = (
+         SELECT id FROM acc.m_support_credentials
+         WHERE user_id = $1 AND status = 'pending'
+         ORDER BY created_at DESC
+         LIMIT 1
+       )
+       RETURNING id, user_id, storage_key, content_type, support_role, expert_subject, status`,
+      [userId],
+    );
+    return result.rows[0] ? credentialFrom(result.rows[0]) : null;
+  }
+
+  async reviewLatestCredential(userId: string, status: CredentialStatus): Promise<StoredCredential | null> {
+    const result = await this.pool.query(
+      `UPDATE acc.m_support_credentials
+       SET status = $2, reviewed_at = NOW()
+       WHERE id = (
+         SELECT id FROM acc.m_support_credentials
+         WHERE user_id = $1
+         ORDER BY created_at DESC
+         LIMIT 1
+       )
+       RETURNING id, user_id, storage_key, content_type, support_role, expert_subject, status`,
+      [userId, status],
+    );
+    return result.rows[0] ? credentialFrom(result.rows[0]) : null;
   }
 
   private async userInterests(userId: string): Promise<Interest[]> {

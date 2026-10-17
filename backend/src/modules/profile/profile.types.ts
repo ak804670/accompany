@@ -1,6 +1,18 @@
 export type OnboardingStep = 'intent' | 'role' | 'certificate' | 'basics' | 'gender' | 'location' | 'photo' | 'about' | 'interests' | 'preferences' | 'rates' | 'review' | 'complete';
 export type AccountIntent = 'anonymous' | 'provider';
 export type SupportRole = 'friendly' | 'astrologer' | 'counselor' | 'expert';
+export type ProfessionalRole = 'astrologer' | 'counselor' | 'expert';
+export type CredentialStatus = 'pending' | 'approved' | 'rejected';
+
+export type StoredCredential = {
+  id: string;
+  userId: string;
+  storageKey: string;
+  contentType: string;
+  supportRole: ProfessionalRole;
+  expertSubject: string | null;
+  status: CredentialStatus;
+};
 
 export type ProfileMedia = {
   id: string;

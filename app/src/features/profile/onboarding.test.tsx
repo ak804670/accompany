@@ -1,5 +1,17 @@
 import { cleanup, render, screen, userEvent } from '@testing-library/react-native';
 
+jest.mock('@livekit/react-native', () => ({
+  AudioSession: {
+    startAudioSession: async () => undefined,
+    stopAudioSession: async () => undefined,
+  },
+}));
+
+jest.mock('livekit-client', () => ({
+  Room: class Room {},
+  Track: {},
+}));
+
 import { wipeUserCache } from '@/database/session-cache';
 import { ProfileProvider } from '@/features/profile/ProfileProvider';
 import { profileService } from '@/features/profile/services/profile.service';
@@ -43,6 +55,11 @@ jest.mock('@/features/profile/services/profile.service', () => ({
   profileService: {
     get: jest.fn(),
     setIntent: jest.fn(),
+    setRole: jest.fn(),
+    rates: jest.fn(async () => ({ chat: null, audio: null, video: null })),
+    skipCredential: jest.fn(),
+    uploadCredential: jest.fn(),
+    resumeCredential: jest.fn(),
     saveBasics: jest.fn(),
     update: jest.fn(),
     interests: jest.fn(),
@@ -117,6 +134,39 @@ describe('profile onboarding', () => {
     expect(await screen.findByText('What should people call you?')).toBeOnTheScreen();
     expect(screen.getByLabelText('Display name').props.value).toBe('');
     expect(service.setIntent).not.toHaveBeenCalled();
+  });
+
+  it('resumes a saved rates step', async () => {
+    service.get.mockResolvedValue(profile({ step: 'rates', accountIntent: 'provider' }));
+    await renderGate();
+    expect(await screen.findByText('Set your rates')).toBeOnTheScreen();
+  });
+
+  it('stays on the certificate step when upload fails and continues when verification is skipped', async () => {
+    service.get.mockResolvedValue(profile({ step: 'certificate', accountIntent: 'provider', supportRole: 'astrologer' }));
+    service.uploadCredential.mockRejectedValue(new Error('upload failed'));
+    service.skipCredential.mockResolvedValue(profile({ step: 'gender', accountIntent: 'provider', supportRole: 'astrologer' }));
+    await renderGate();
+    await userEvent.press(await screen.findByRole('button', { name: 'Upload certificate' }));
+    expect(await screen.findByText('Could not save your profile.')).toBeOnTheScreen();
+    expect(screen.getByText('Verification')).toBeOnTheScreen();
+    await userEvent.press(screen.getByRole('button', { name: 'Continue without verification' }));
+    expect(service.skipCredential).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("What's your gender?")).toBeOnTheScreen();
+  });
+
+  it('changes role from the profile tab without restarting onboarding when the public profile is already complete', async () => {
+    service.get.mockResolvedValue(profile({ complete: true, step: 'complete', accountIntent: 'provider', supportRole: 'friendly', verificationStatus: 'none', media: [{ id: 'media-1', isPrimary: true, contentType: 'image/jpeg' }] }));
+    service.rates.mockResolvedValue({ chat: 10, audio: null, video: null });
+    service.setRole.mockResolvedValue(profile({ complete: false, step: 'certificate', accountIntent: 'provider', supportRole: 'astrologer', verificationStatus: 'none', media: [{ id: 'media-1', isPrimary: true, contentType: 'image/jpeg' }] }));
+    await renderGate();
+    await userEvent.press(await screen.findByRole('tab', { name: 'Profile' }));
+    expect(await screen.findByText('Listed companion')).toBeOnTheScreen();
+    await userEvent.press(screen.getByRole('button', { name: 'Astrologer' }));
+    await userEvent.press(screen.getByRole('button', { name: 'Save role' }));
+    expect(service.setRole).toHaveBeenCalledWith('astrologer', '');
+    expect(await screen.findByText('Verification')).toBeOnTheScreen();
+    expect(screen.queryByText('What should people call you?')).toBeNull();
   });
 
   it('opens home when the profile is complete', async () => {

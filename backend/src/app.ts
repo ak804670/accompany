@@ -41,7 +41,7 @@ export function createApp(deps: AppDependencies) {
   app.disable('x-powered-by');
   app.set('trust proxy', deps.nodeEnv === 'development' ? false : 1);
   app.use((request, response, next) => {
-    const mediaUpload = request.method === 'POST' && request.path === '/v1/profile/media';
+    const mediaUpload = request.method === 'POST' && (request.path === '/v1/profile/media' || request.path === '/v1/profile/credential');
     if (request.method === 'POST' && (request.path === '/webhooks/livekit' || request.path === '/webhooks/payments')) {
       return express.raw({ type: '*/*', limit: '1mb' })(request, response, next);
     }

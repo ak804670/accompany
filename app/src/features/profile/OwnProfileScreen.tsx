@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/design-system/AppButton';
@@ -32,8 +32,14 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
   const { preference, setPreference } = useTheme();
   const [rates, setRates] = useState<{ chat: number | null; audio: number | null; video: number | null } | null>(null);
   const [locationName, setLocationName] = useState<string | null>(null);
+  const [roleDraft, setRoleDraft] = useState<'friendly' | 'astrologer' | 'counselor' | 'expert'>(profile?.supportRole ?? 'friendly');
+  const [subjectDraft, setSubjectDraft] = useState(profile?.expertSubject ?? '');
+  const [roleError, setRoleError] = useState<string | null>(null);
+  const [savingRole, setSavingRole] = useState(false);
   const isAnonymous = profile?.accountIntent === 'anonymous';
+  const professional = profile?.supportRole === 'astrologer' || profile?.supportRole === 'counselor' || profile?.supportRole === 'expert';
   const name = profile?.displayName?.trim() || 'Your profile';
+  const verificationLabel = profile?.verificationStatus === 'approved' ? 'Verified' : profile?.verificationStatus === 'pending' ? 'Pending review' : profile?.verificationStatus === 'rejected' ? 'Not approved' : professional ? 'Not verified' : 'Not required';
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -89,7 +95,26 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
       </View>
       <ProfileSection title="Profile information">
         <Info label="Account intent" value="Listed companion" />
-        <Info label="Support role" value={`${profile?.supportRole ?? 'Friendly'}${profile?.supportRole === 'expert' && profile.expertSubject ? ` · ${profile.expertSubject}` : ''}${profile?.verificationStatus === 'approved' ? ' · Verified' : ''}`} />
+        <Info label="Support role" value={`${profile?.supportRole ?? 'Friendly'}${profile?.supportRole === 'expert' && profile.expertSubject ? ` · ${profile.expertSubject}` : ''}`} />
+        <Info label="Verification" value={verificationLabel} />
+        {profile?.verificationStatus === 'rejected' && profile.verificationNote ? <AppText variant="bodyS" tone="muted">{profile.verificationNote}</AppText> : null}
+        <View className="gap-sm">
+          {(['friendly', 'astrologer', 'counselor', 'expert'] as const).map((item) => (
+            <AppButton key={item} variant={roleDraft === item ? 'primary' : 'outline'} onPress={() => setRoleDraft(item)}>{item[0].toUpperCase() + item.slice(1)}</AppButton>
+          ))}
+          {roleDraft === 'expert' ? <TextInput value={subjectDraft} onChangeText={setSubjectDraft} placeholder="Expert subject" maxLength={80} className="rounded-sm border border-input px-3 py-3 text-foreground" /> : null}
+          {roleDraft === 'counselor' ? <AppText variant="caption">Counseling here is supportive conversation, not emergency care.</AppText> : null}
+          {roleError ? <AppText variant="bodyS" tone="muted">{roleError}</AppText> : null}
+          <AppButton loading={savingRole} onPress={() => {
+            if (roleDraft === 'expert' && subjectDraft.trim().length < 2) { setRoleError('Enter the expert subject.'); return; }
+            setSavingRole(true);
+            setRoleError(null);
+            void profileService.setRole(roleDraft, subjectDraft).then(setProfile).catch((caught) => setRoleError(profileService.failureMessage(caught))).finally(() => setSavingRole(false));
+          }}>Save role</AppButton>
+          {professional && profile?.verificationStatus !== 'approved' ? (
+            <AppButton variant="outline" onPress={() => { void profileService.resumeCredential().then(setProfile).catch(() => undefined); }}>Upload certificate</AppButton>
+          ) : null}
+        </View>
         <Info label="Name" value={name} />
         <Info label="Bio" value={profile?.bio?.trim() || 'Add a short introduction'} />
         <AppText variant="caption" tone="muted">Interests</AppText>
@@ -152,6 +177,12 @@ export function OwnProfileScreen({ onEdit, onBlocked, onWallet }: OwnProfileScre
           ))}
         </View>
       </ProfileSection>
+      {isAnonymous ? (
+        <ProfileSection title="Profile information">
+          <Info label="Account intent" value="Anonymous listener" />
+          <AppText variant="bodyS" tone="muted">You stay out of discovery. Your name is the alias people hear in calls.</AppText>
+        </ProfileSection>
+      ) : null}
       <ProfileSection title="Account">
         <AppButton variant="outline" onPress={() => {
           const nextIntent = isAnonymous ? 'provider' : 'anonymous';

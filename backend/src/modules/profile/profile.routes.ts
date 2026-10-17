@@ -59,6 +59,39 @@ export function createProfileRouter(service: ProfileService) {
     catch (error) { next(error); }
   });
 
+  router.post('/credential/skip', async (request, response, next) => {
+    try { response.json({ profile: await service.skipCredential(await userId(request)) }); }
+    catch (error) { next(error); }
+  });
+
+  router.post('/credential/review', async (request, response, next) => {
+    try { response.json({ profile: await service.reviewCredential(await userId(request), request.body) }); }
+    catch (error) { next(error); }
+  });
+
+  router.post('/credential/resume', async (request, response, next) => {
+    try { response.json({ profile: await service.resumeCredential(await userId(request)) }); }
+    catch (error) { next(error); }
+  });
+
+  router.delete('/credential', async (request, response, next) => {
+    try { response.json({ profile: await service.removeCredential(await userId(request)) }); }
+    catch (error) { next(error); }
+  });
+
+  router.post(
+    '/credential',
+    express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '4mb' }),
+    async (request, response, next) => {
+      try {
+        const uploaded = mediaUpload(request);
+        response.status(201).json({ profile: await service.addCredential(await userId(request), uploaded.bytes) });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
   router.post('/complete', async (request, response, next) => {
     try {
       const profile = await service.complete(await userId(request));

@@ -44,6 +44,7 @@ describe('profile service', () => {
     const languages = await profile.update('user-1', { languagePreferences: ['en'] });
     assert.deepEqual(languages.languagePreferences, ['en']);
     await profile.saveRates('user-1', { chat: 10 });
+    await profile.setRole('user-1', { role: 'friendly' });
     const done = await profile.complete('user-1');
     assert.equal(done.complete, true);
     assert.equal(done.step, 'complete');
@@ -131,6 +132,99 @@ describe('profile service', () => {
       return true;
     });
     assert.equal(repository.profiles.has('user-1'), false);
+  });
+
+  it('keeps an anonymous profile hidden and leaves a provider unlisted until a photo and rate exist', async () => {
+    const { profile, repository } = service();
+    await profile.setIntent('user-1', { intent: 'anonymous' });
+    await profile.saveBasics('user-1', { displayName: 'QuietOwl1234', dateOfBirth: '1998-04-02' });
+    await profile.update('user-1', { languagePreferences: ['en'] });
+    const hidden = await profile.complete('user-1');
+    assert.equal(hidden.profileStatus, 'hidden');
+    assert.equal(hidden.accountIntent, 'anonymous');
+    assert.equal(repository.companionStatus.has('user-1'), false);
+
+    const listed = await profile.saveBasics('user-2', { displayName: 'Anish', dateOfBirth: '1990-01-01' });
+    assert.equal(listed.accountIntent, 'provider');
+    await profile.addMedia('user-2', jpeg, 'image/jpeg');
+    await assert.rejects(() => profile.complete('user-2'), (error: unknown) => {
+      assert.ok(error instanceof ProfileError);
+      assert.equal(error.code, 'PROFILE_INCOMPLETE');
+      return true;
+    });
+  });
+
+  it('lists a professional without a badge until review, then restores that badge when the role returns', async () => {
+    const { profile, repository, storage } = service();
+    await profile.saveBasics('user-1', { displayName: 'Anish', dateOfBirth: '1998-04-02' });
+    await profile.addMedia('user-1', jpeg, 'image/jpeg');
+    await profile.saveRates('user-1', { chat: 12 });
+    await profile.setRole('user-1', { role: 'friendly' });
+
+    const astrologer = await profile.setRole('user-1', { role: 'astrologer' });
+    assert.equal(astrologer.supportRole, 'astrologer');
+    assert.equal(astrologer.verificationStatus, 'none');
+    assert.equal(astrologer.complete, false);
+    assert.equal(astrologer.step, 'certificate');
+
+    const skipped = await profile.skipCredential('user-1');
+    assert.equal(skipped.verificationStatus, 'none');
+    assert.equal(skipped.profileStatus, 'active');
+    assert.equal(skipped.complete, true);
+
+    const pendingRole = await profile.setRole('user-1', { role: 'counselor' });
+    assert.equal(pendingRole.step, 'certificate');
+    const pending = await profile.addCredential('user-1', jpeg);
+    assert.equal(pending.verificationStatus, 'pending');
+    assert.equal(pending.profileStatus, 'active');
+    assert.equal(pending.media.length, 1);
+    assert.equal(repository.credentials[0]?.status, 'pending');
+    assert.equal(storage.files.size, 2);
+
+    const approved = await profile.reviewCredential('user-1', { status: 'approved' });
+    assert.equal(approved.verificationStatus, 'approved');
+    assert.equal(approved.supportRole, 'counselor');
+
+    const friendly = await profile.setRole('user-1', { role: 'friendly' });
+    assert.equal(friendly.verificationStatus, 'none');
+    assert.equal(friendly.complete, true);
+
+    const restored = await profile.setRole('user-1', { role: 'counselor' });
+    assert.equal(restored.verificationStatus, 'approved');
+    assert.equal(restored.step, 'complete');
+    assert.equal(restored.complete, true);
+  });
+
+  it('hides a provider who becomes anonymous and resumes a listener at the first missing public step', async () => {
+    const { profile, repository } = service();
+    await profile.saveBasics('user-1', { displayName: 'Anish', dateOfBirth: '1998-04-02' });
+    await profile.addMedia('user-1', jpeg, 'image/jpeg');
+    await profile.saveRates('user-1', { chat: 8 });
+    await profile.setRole('user-1', { role: 'friendly' });
+    assert.equal(repository.companionStatus.get('user-1'), 'available');
+
+    const hidden = await profile.setIntent('user-1', { intent: 'anonymous' });
+    assert.equal(hidden.profileStatus, 'hidden');
+    assert.equal(hidden.supportRole, null);
+    assert.equal(hidden.complete, true);
+    assert.equal(repository.companionStatus.get('user-1'), 'offline');
+
+    const returning = await profile.setIntent('user-1', { intent: 'provider' });
+    assert.equal(returning.step, 'role');
+    assert.equal(returning.complete, false);
+    const listed = await profile.setRole('user-1', { role: 'friendly' });
+    assert.equal(listed.profileStatus, 'active');
+    assert.equal(listed.complete, true);
+
+    await profile.setIntent('user-2', { intent: 'anonymous' });
+    await profile.saveBasics('user-2', { displayName: 'KindFox1000', dateOfBirth: '1992-02-02' });
+    await profile.update('user-2', { languagePreferences: ['en'] });
+    await profile.complete('user-2');
+    await profile.setIntent('user-2', { intent: 'provider' });
+    const needsPhoto = await profile.setRole('user-2', { role: 'friendly' });
+    assert.equal(needsPhoto.step, 'photo');
+    assert.equal(needsPhoto.profileStatus, 'incomplete');
+    assert.equal(needsPhoto.complete, false);
   });
 
   it('requires a session', async () => {

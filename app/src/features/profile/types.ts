@@ -40,6 +40,10 @@ export function routeForStep(step: OnboardingStep): OnboardingRoute {
       return 'Interests';
     case 'preferences':
       return 'Preferences';
+    case 'rates':
+      return 'Rates';
+    case 'basics':
+      return 'Basics';
     case 'review':
     case 'complete':
       return 'Review';

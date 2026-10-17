@@ -38,6 +38,21 @@ export const profileService = {
     return result.profile;
   },
 
+  async skipCredential(): Promise<UserProfile> {
+    const result = await apiClient.post<ProfileResponse>('/v1/profile/credential/skip', {});
+    return result.profile;
+  },
+
+  async uploadCredential(bytes: Uint8Array, contentType: string): Promise<UserProfile> {
+    const result = await apiClient.post<ProfileResponse>('/v1/profile/credential', { contentType, data: encodeBase64(bytes) });
+    return result.profile;
+  },
+
+  async resumeCredential(): Promise<UserProfile> {
+    const result = await apiClient.post<ProfileResponse>('/v1/profile/credential/resume', {});
+    return result.profile;
+  },
+
   async update(body: { bio?: string; languagePreferences?: string[]; displayName?: string; dateOfBirth?: string }): Promise<UserProfile> {
     try {
       const result = await apiClient.patch<ProfileResponse>('/v1/profile', body);

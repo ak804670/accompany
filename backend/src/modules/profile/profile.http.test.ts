@@ -63,4 +63,40 @@ describe('profile http', () => {
       await server.close();
     }
   });
+
+  it('keeps a skipped or pending certificate off the public photo list', async () => {
+    const server = start();
+    try {
+      const headers = { authorization: 'Bearer good', 'content-type': 'application/json' };
+      await fetch(`${server.url}/v1/profile`, { method: 'POST', headers, body: JSON.stringify({ displayName: 'Anish', dateOfBirth: '1998-04-02' }) });
+      const role = await fetch(`${server.url}/v1/profile/role`, { method: 'PUT', headers, body: JSON.stringify({ role: 'astrologer' }) });
+      assert.equal(role.status, 200);
+      const skipped = await fetch(`${server.url}/v1/profile/credential/skip`, { method: 'POST', headers, body: '{}' });
+      const skippedBody = (await skipped.json()) as { profile: { verificationStatus: string; media: unknown[] } };
+      assert.equal(skipped.status, 200);
+      assert.equal(skippedBody.profile.verificationStatus, 'none');
+
+      await fetch(`${server.url}/v1/profile/role`, { method: 'PUT', headers, body: JSON.stringify({ role: 'counselor' }) });
+      const uploaded = await fetch(`${server.url}/v1/profile/credential`, {
+        method: 'POST',
+        headers: { authorization: 'Bearer good', 'content-type': 'image/jpeg' },
+        body: jpeg,
+      });
+      const uploadedBody = (await uploaded.json()) as { profile: { verificationStatus: string; media: unknown[] } };
+      assert.equal(uploaded.status, 201);
+      assert.equal(uploadedBody.profile.verificationStatus, 'pending');
+      assert.equal(uploadedBody.profile.media.length, 0);
+
+      const reviewed = await fetch(`${server.url}/v1/profile/credential/review`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ status: 'approved' }),
+      });
+      const reviewedBody = (await reviewed.json()) as { profile: { verificationStatus: string } };
+      assert.equal(reviewed.status, 200);
+      assert.equal(reviewedBody.profile.verificationStatus, 'approved');
+    } finally {
+      await server.close();
+    }
+  });
 });

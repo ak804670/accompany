@@ -1,7 +1,14 @@
 import { randomUUID } from 'node:crypto';
 
-import type { Interest, ProfileRecord, StoredMedia } from './profile.types.js';
+import type { CredentialStatus, Interest, ProfessionalRole, ProfileRecord, StoredCredential, StoredMedia } from './profile.types.js';
 import type { ProfileRepository, ProfileWrite } from './profile.repository.js';
+
+function lastCredentialIndex(items: StoredCredential[], predicate: (item: StoredCredential) => boolean): number {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    if (predicate(items[index]!)) return index;
+  }
+  return -1;
+}
 
 export class MemoryProfileRepository implements ProfileRepository {
   users = new Set<string>();
@@ -116,6 +123,8 @@ export class MemoryProfileRepository implements ProfileRepository {
   }
 
   rates = new Map<string, { chat: number | null; audio: number | null; video: number | null }>();
+  companionStatus = new Map<string, 'offline' | 'available'>();
+  credentials: StoredCredential[] = [];
 
   async reorderMedia(userId: string, mediaIds: string[]): Promise<boolean> {
     const profile = this.profiles.get(userId);
@@ -143,6 +152,36 @@ export class MemoryProfileRepository implements ProfileRepository {
       video: rates.video ?? current.video,
     };
     this.rates.set(userId, next);
+    if (!this.companionStatus.has(userId)) this.companionStatus.set(userId, 'available');
+    return next;
+  }
+
+  async setCompanionOffline(userId: string): Promise<void> {
+    if (this.companionStatus.has(userId)) this.companionStatus.set(userId, 'offline');
+  }
+
+  async findApprovedCredential(userId: string, role: ProfessionalRole, expertSubject: string | null): Promise<StoredCredential | null> {
+    const latest = [...this.credentials].reverse().find((item) => item.userId === userId && item.supportRole === role && (item.expertSubject ?? null) === expertSubject);
+    return latest?.status === 'approved' ? latest : null;
+  }
+
+  async addCredential(credential: StoredCredential): Promise<void> {
+    this.credentials.push(credential);
+  }
+
+  async deleteLatestPendingCredential(userId: string): Promise<StoredCredential | null> {
+    const index = lastCredentialIndex(this.credentials, (item) => item.userId === userId && item.status === 'pending');
+    if (index < 0) return null;
+    const [removed] = this.credentials.splice(index, 1);
+    return removed ?? null;
+  }
+
+  async reviewLatestCredential(userId: string, status: CredentialStatus): Promise<StoredCredential | null> {
+    const index = lastCredentialIndex(this.credentials, (item) => item.userId === userId);
+    const current = index < 0 ? undefined : this.credentials[index];
+    if (!current) return null;
+    const next = { ...current, status };
+    this.credentials[index] = next;
     return next;
   }
 }
