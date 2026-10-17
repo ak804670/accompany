@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppIconButton } from '@/components/design-system/AppIconButton';
@@ -14,10 +14,11 @@ type ChatHeaderProps = {
   online: boolean;
   onCall?: boolean;
   onBack: () => void;
+  onPressProfile?: () => void;
   actions?: ReactNode;
 };
 
-export function ChatHeader({ name, personId, online, onCall, onBack, actions }: ChatHeaderProps) {
+export function ChatHeader({ name, personId, online, onCall, onBack, onPressProfile, actions }: ChatHeaderProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -27,11 +28,19 @@ export function ChatHeader({ name, personId, online, onCall, onBack, actions }: 
     >
       <NavBarGradient />
       <AppIconButton icon="back" size="lg" accessibilityLabel="Go back" onPress={onBack} />
-      <PersonAvatar userId={personId} name={name} size={40} />
-      <View className="flex-1">
-        <AppText variant="label">{name}</AppText>
-        <OnlineStatus online={online} onCall={onCall} />
-      </View>
+      <Pressable
+        accessibilityRole={onPressProfile ? 'button' : undefined}
+        accessibilityLabel={onPressProfile ? `View ${name}'s profile` : undefined}
+        disabled={!onPressProfile}
+        onPress={onPressProfile}
+        className="flex-1 flex-row items-center gap-sm active:opacity-70"
+      >
+        <PersonAvatar userId={personId} name={name} size={40} />
+        <View className="flex-1">
+          <AppText variant="label">{name}</AppText>
+          <OnlineStatus online={online} onCall={onCall} />
+        </View>
+      </Pressable>
       {actions}
     </View>
   );

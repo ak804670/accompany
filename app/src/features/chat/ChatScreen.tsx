@@ -498,6 +498,13 @@ export function ChatScreen({ conversationId, name, personId, online, onCall, hig
         online={header.online}
         onCall={header.onCall}
         onBack={onBack}
+        onPressProfile={
+          header.personId
+            ? () => {
+                onViewProfile?.(header.personId!);
+              }
+            : undefined
+        }
         actions={
           <View className="flex-row items-center">
             {panels.footer === 'composer' ? (

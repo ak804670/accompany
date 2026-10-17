@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import {
   ShieldCheck,
@@ -10,24 +10,17 @@ import {
   Coins,
   ChevronRight,
   Printer,
+  Users,
 } from 'lucide-react';
 import { SEO } from '@/components/common/SEO';
 import { buildBreadcrumbSchema } from '@/lib/seo-schemas';
 
 export const TermsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') === 'privacy' ? 'privacy' : 'terms';
-  const [activeTab, setActiveTab] = useState<'terms' | 'privacy'>(initialTab);
+  const requestedTab = searchParams.get('tab');
+  const activeTab = requestedTab === 'privacy' || requestedTab === 'community' ? requestedTab : 'terms';
 
-  useEffect(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam === 'privacy' || tabParam === 'terms') {
-      setActiveTab(tabParam);
-    }
-  }, [searchParams]);
-
-  const handleTabChange = (tab: 'terms' | 'privacy') => {
-    setActiveTab(tab);
+  const handleTabChange = (tab: 'terms' | 'privacy' | 'community') => {
     setSearchParams({ tab });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -35,26 +28,21 @@ export const TermsPage: React.FC = () => {
   return (
     <div className="py-10 md:py-16">
       <SEO
-        title={
-          activeTab === 'terms'
-            ? 'User Terms and Conditions — Accompany'
-            : 'Privacy Policy — Accompany'
-        }
-        description="Read the official User Terms & Conditions and Privacy Policy for Accompany. Understand our commitment to 100% user anonymity, data security, platform rules, and dispute resolution."
+        title={`${activeTab === 'terms' ? 'User Terms and Conditions' : activeTab === 'privacy' ? 'Privacy Policy' : 'Community Rules'} — Accompany`}
+        description="Review Accompany's Terms and Conditions, Privacy Policy, and Community Rules. These pages are drafts under review and are not currently effective."
         canonicalUrl="/terms"
         ogType="website"
         keywords={[
           'accompany terms and conditions',
           'accompany privacy policy',
           'terms of service accompany app',
-          'anonymity and data protection',
-          'user safety rules',
+          'community rules',
         ]}
         jsonLd={[
           buildBreadcrumbSchema([
             { name: 'Home', url: '/' },
             {
-              name: activeTab === 'terms' ? 'Terms & Conditions' : 'Privacy Policy',
+              name: activeTab === 'terms' ? 'Terms & Conditions' : activeTab === 'privacy' ? 'Privacy Policy' : 'Community Rules',
               url: `/terms?tab=${activeTab}`,
             },
           ]),
@@ -73,7 +61,7 @@ export const TermsPage: React.FC = () => {
           </span>
           <ChevronRight className="w-3 h-3" />
           <span className="text-[#C7377A] font-medium">
-            {activeTab === 'terms' ? 'User Terms & Conditions' : 'Privacy Policy'}
+            {activeTab === 'terms' ? 'User Terms & Conditions' : activeTab === 'privacy' ? 'Privacy Policy' : 'Community Rules'}
           </span>
         </nav>
 
@@ -81,13 +69,13 @@ export const TermsPage: React.FC = () => {
         <div className="mb-10 text-center sm:text-left flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-8 border-b border-[#E3DBD1] dark:border-[#3A342E]">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-[#C7377A] mb-2 block">
-              Official Legal Policies
+              Legal Policies · Draft for Review
             </span>
             <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-[#1C1916] dark:text-[#F3EEE6]">
-              {activeTab === 'terms' ? 'User Terms & Conditions' : 'Privacy Policy'}
+              {activeTab === 'terms' ? 'User Terms & Conditions' : activeTab === 'privacy' ? 'Privacy Policy' : 'Community Rules'}
             </h1>
             <p className="text-xs text-[#5E574F] dark:text-[#B7AFA3] mt-2">
-              Last Updated: October 2026 • Effective Immediately
+              Draft · Not effective
             </p>
           </div>
 
@@ -100,11 +88,16 @@ export const TermsPage: React.FC = () => {
           </button>
         </div>
 
+        <div className="mb-8 rounded-2xl border border-[#F2A82B]/40 bg-[#FFF8E8] px-5 py-4 text-xs leading-relaxed text-[#5E574F] dark:bg-[#241E12] dark:text-[#D5C8AC]" role="note">
+          <strong className="text-[#1C1916] dark:text-[#F3EEE6]">Internal review draft — not effective.</strong>{' '}
+          These pages are being aligned with the current product and operating practices. Confirm the company, privacy, payment, and support details and obtain appropriate review before publishing them as binding policies.
+        </div>
+
         {/* Tab Selector */}
         <div className="flex items-center p-1.5 rounded-2xl bg-[#FFFCF8] dark:bg-[#1C1A17] border border-[#E3DBD1] dark:border-[#3A342E] shadow-2xs mb-10">
           <button
             onClick={() => handleTabChange('terms')}
-            className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            className={`min-w-0 flex-1 py-3 px-2 sm:px-4 rounded-xl text-[10px] sm:text-sm font-semibold leading-tight transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer ${
               activeTab === 'terms'
                 ? 'bg-[#C7377A] text-white shadow-xs'
                 : 'text-[#5E574F] dark:text-[#B7AFA3] hover:text-[#1C1916] dark:hover:text-[#F3EEE6]'
@@ -115,7 +108,7 @@ export const TermsPage: React.FC = () => {
           </button>
           <button
             onClick={() => handleTabChange('privacy')}
-            className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            className={`min-w-0 flex-1 py-3 px-2 sm:px-4 rounded-xl text-[10px] sm:text-sm font-semibold leading-tight transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer ${
               activeTab === 'privacy'
                 ? 'bg-[#C7377A] text-white shadow-xs'
                 : 'text-[#5E574F] dark:text-[#B7AFA3] hover:text-[#1C1916] dark:hover:text-[#F3EEE6]'
@@ -123,6 +116,17 @@ export const TermsPage: React.FC = () => {
           >
             <Lock className="w-4 h-4" />
             <span>Privacy Policy</span>
+          </button>
+          <button
+            onClick={() => handleTabChange('community')}
+            className={`min-w-0 flex-1 py-3 px-2 sm:px-4 rounded-xl text-[10px] sm:text-sm font-semibold leading-tight transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer ${
+              activeTab === 'community'
+                ? 'bg-[#C7377A] text-white shadow-xs'
+                : 'text-[#5E574F] dark:text-[#B7AFA3] hover:text-[#1C1916] dark:hover:text-[#F3EEE6]'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Community Rules</span>
           </button>
         </div>
 
@@ -140,10 +144,10 @@ export const TermsPage: React.FC = () => {
                     Key Highlights for Accompany Users
                   </h3>
                   <ul className="space-y-1.5 text-xs text-[#5E574F] dark:text-[#B7AFA3] list-disc list-inside">
-                    <li>Accompany is a 100% private, anonymous platform connecting users with peer listeners for non-clinical experience sharing.</li>
-                    <li>We do not provide emergency, medical, psychiatric, or crisis-intervention services.</li>
-                    <li>Off-platform communications (sharing phone numbers, UPI, or in-person meetings) are strictly prohibited and result in immediate termination.</li>
-                    <li>You must be at least 18 years of age to access or use the Accompany App.</li>
+                    <li>Accompany provides on-platform conversation for adults.</li>
+                    <li>Accompany is not a medical, psychiatric, or emergency service.</li>
+                    <li>Keep conversations and payments on the platform; do not share another person's private information.</li>
+                    <li>Accompany is intended for people aged 18 or older. The current date-of-birth entry is self-declared, not independent age verification.</li>
                   </ul>
                 </div>
               </div>
@@ -155,26 +159,26 @@ export const TermsPage: React.FC = () => {
                 1. Introduction & Acceptance of Terms
               </h2>
               <p>
-                We, <strong>Accompany</strong>, are an internet-based mobile application owned and operated by Accompany Technologies Private Limited (hereinafter referred to as “Us”, “We”, or “Accompany” as the context permits). The individual user shall hereinafter be referred to as “You”, “Your”, or “User(s)”. Accompany and You may together be referred to as “Parties” or individually as “Party”.
+                Accompany provides the mobile application and related services. The legal entity that operates the service must be confirmed and identified in the final terms. In this draft, “Accompany”, “we”, and “us” refer to the service; “you” refers to a user.
               </p>
               <p>
                 These User Terms and Conditions apply to You from the moment You download the Accompany mobile application (hereinafter referred to as the “Accompany App”) available on the Google Play Store or any authorized application marketplace, or otherwise access, procure, or use any of our services.
               </p>
               <p>
-                These terms are legally binding under the laws of India. Should the User choose to proceed with the Accompany App and enjoy its features, it shall be held and assumed that You have agreed to each and every term of usage, condition, and liability contained herein. This document is to be read in harmonious conjunction with our Privacy Policy.
+                This page is a draft for review and is not currently effective. Before publication, Accompany must confirm its legal operator, the acceptance flow used in the app, and the final terms that apply to users. This draft should be read alongside the Privacy Policy and Community Rules once approved.
               </p>
             </section>
 
             {/* Section 2 */}
             <section className="space-y-4">
               <h2 className="font-serif text-2xl font-bold tracking-tight text-[#1C1916] dark:text-[#F3EEE6] pt-2">
-                2. User Anonymity and Voluntary Disclosure
+                2. Profile Information and Privacy Expectations
               </h2>
               <p>
-                We position and operate the platform as a <strong>‘100% Private’</strong> space for users. ‘100% Private’ means that a User’s real-world identity and personal identifiers (such as mobile phone number, legal name, email, or exact physical location) are not disclosed to the Listener/Companion as part of the standard functioning of the platform.
+                Accompany uses account and profile information to provide the service. A companion may see profile information and conversation content made available through the app. Do not assume that use of a display name makes an account anonymous or that personal information can never be disclosed. The exact information visible to other users and the service operator must be confirmed against the current app before these terms take effect.
               </p>
               <p>
-                Accordingly, the User remains completely anonymous to the Listener unless the User voluntarily chooses to disclose identifying information during the interaction. The User acknowledges and agrees that any such voluntary disclosure is made at the User’s sole discretion and risk, and the User shall remain solely responsible for any consequences arising from identifying information voluntarily shared.
+                Avoid sharing information you do not want another participant to know, including contact details, financial credentials, or precise location. Accompany cannot control information that a user chooses to disclose in a conversation.
               </p>
             </section>
 
@@ -211,7 +215,7 @@ export const TermsPage: React.FC = () => {
                   You shall not ask for, request, share, exchange, post, solicit, or otherwise communicate any personal contact information or identifiers that can enable any person to contact, trace, or meet outside the Accompany App. This includes but is not limited to: <strong>phone numbers, personal emails, residential addresses, social media handles (Instagram, WhatsApp, Telegram, Snapchat), UPI IDs, QR codes, or bank details</strong>. You shall not arrange to meet any Listener in person.
                 </p>
                 <p className="text-xs sm:text-sm text-[#5E574F] dark:text-[#B7AFA3]">
-                  Any off-platform interaction is strictly outside the services provided by Accompany. Accompany cannot supervise or enforce safety standards off-platform. Violation of this clause results in immediate and permanent account termination without notice or coin refunds.
+                  Do not use Accompany to solicit or arrange off-platform contact or payments. Reports of suspected violations may be reviewed under an enforcement process that must be defined and operated consistently before these terms take effect. Any restriction or account action should follow that process and applicable law.
                 </p>
               </div>
             </section>
@@ -244,7 +248,7 @@ export const TermsPage: React.FC = () => {
                     No Emergency Services or Crisis Hotlines
                   </p>
                   <p className="text-[#5E574F] dark:text-[#B7AFA3]">
-                    Accompany does NOT provide access to emergency services (police, ambulance, fire departments, or crisis intervention). If You or anyone around You is at risk of self-harm, suicide, violence, or medical emergency, You must immediately contact national emergency services (such as 112, KIRAN at 1800-599-0019, or Tele-MANAS at 14416 in India).
+                    Accompany does not provide emergency services or crisis intervention. If you or someone else is in immediate danger or needs urgent medical care, contact local emergency services or a qualified professional in your area.
                   </p>
                 </div>
               </div>
@@ -256,27 +260,27 @@ export const TermsPage: React.FC = () => {
                 7. Age Requirement: Minimum 18 Years
               </h2>
               <p>
-                The Accompany App is available only to persons over the age of eighteen (18) years. We reserve the absolute right to terminate access if it is brought to our attention that an individual is a minor under 18 years of age.
+                Accompany is intended only for people aged 18 or older. The current app collects a user-entered date of birth; this is a self-declaration and does not independently verify age. Age controls and handling of existing accounts must be confirmed before publication. Accounts identified as belonging to minors should be handled under a documented process and applicable law.
               </p>
             </section>
 
             {/* Section 8 */}
             <section className="space-y-4">
               <h2 className="font-serif text-2xl font-bold tracking-tight text-[#1C1916] dark:text-[#F3EEE6] pt-2">
-                8. Coin Wallet, Payments & Non-Refundability
+                8. Coins, Payments, and Refunds
               </h2>
               <div className="space-y-3">
                 <p>
-                  Users may purchase in-app Coins / Wallet credits to pay for per-minute Experience Sharing Interactions with Listeners.
+                  The app currently offers coin balances for paid interactions. The amount charged, coin conversion, taxes, companion earnings, withdrawal terms, and treatment of failed or interrupted sessions require confirmation against the live payment and accounting flows.
                 </p>
                 <div className="flex items-start gap-2.5 p-4 rounded-xl bg-[#F7F4EF] dark:bg-[#25221E] border border-[#E3DBD1] dark:border-[#3A342E] text-xs">
                   <Coins className="w-4 h-4 text-[#F2A82B] shrink-0 mt-0.5" />
                   <div>
-                    <strong>Non-Refundable Balance:</strong> Once a User recharges their online coin wallet on the Accompany App, such recharged funds shall NOT be eligible for cash refund or withdrawal back to a bank account, except where explicitly mandated by applicable statutory law.
+                    Refund and withdrawal eligibility has not been confirmed for this draft. Do not rely on a blanket non-refundable statement until the financial model, payment partner terms, and applicable law have been reviewed.
                   </div>
                 </div>
                 <p className="text-xs text-[#5E574F] dark:text-[#B7AFA3]">
-                  All payment transactions are processed through RBI-authorized payment aggregators. Accompany does not store sensitive card numbers, CVVs, or UPI PINs.
+                  The payment provider and the payment information handled by Accompany must be verified before this statement is finalized.
                 </p>
               </div>
             </section>
@@ -290,7 +294,7 @@ export const TermsPage: React.FC = () => {
                 Users expressly agree not to use automated bots, deep-link scrapers, data mining algorithms, or security bypass methods to access or monitor Accompany infrastructure.
               </p>
               <p className="font-semibold text-[#D6333D]">
-                Recording of any conversation, voice call, video call, or chat without mutual express authorization constitutes infringement, breach of privacy, and hacking of the services.
+                The app's call recording, chat storage, and safety-monitoring practices have not been confirmed for this draft. Do not assume that a call or conversation is unrecorded; verify the product behavior and provide an accurate disclosure before publication.
               </p>
             </section>
 
@@ -300,10 +304,10 @@ export const TermsPage: React.FC = () => {
                 10. Intermediary Status & Governing Law
               </h2>
               <p>
-                Accompany acts purely as an intermediary under Section 79 of the Information Technology Act, 2000 and the Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021.
+                Accompany's legal classification and obligations depend on its actual features and operating model and must be confirmed by Indian counsel. This draft does not make a legal determination about intermediary status.
               </p>
               <p>
-                The governing law shall exclusively be Indian Law. Any disputes arising out of or related to Accompany shall be resolved primarily through sole arbitration under the Arbitration and Conciliation Act, 1996 in the English language, and the exclusive jurisdiction of the competent courts in India shall apply.
+                The governing law, dispute process, and forum must be confirmed by counsel and stated in the approved terms.
               </p>
             </section>
 
@@ -313,21 +317,17 @@ export const TermsPage: React.FC = () => {
                 11. Questions & Grievance Contact
               </h2>
               <p className="text-xs text-[#5E574F] dark:text-[#B7AFA3]">
-                For questions regarding these Terms or formal grievance requests, please contact:
+                The support and grievance routes shown below must be verified as monitored and operational before publication.
               </p>
               <div className="p-5 rounded-2xl bg-[#FFFCF8] dark:bg-[#1C1A17] border border-[#E3DBD1] dark:border-[#3A342E] text-xs space-y-1">
                 <div className="font-bold text-[#1C1916] dark:text-[#F3EEE6]">
-                  Accompany Technologies Private Limited
+                  Accompany (legal operator to be confirmed)
                 </div>
                 <div className="text-[#5E574F] dark:text-[#B7AFA3]">
-                  Legal & Grievance Cell
+                  Support and grievance contact (to be confirmed)
                 </div>
                 <div>
-                  Email:{' '}
-                  <a href="mailto:support@accompanyapp.in" className="text-[#C7377A] font-semibold">
-                    support@accompanyapp.in
-                  </a>{' '}
-                  / grievance@accompanyapp.in
+                  Email: contact details to be confirmed before publication.
                 </div>
               </div>
             </section>
@@ -345,10 +345,10 @@ export const TermsPage: React.FC = () => {
                 <Lock className="w-6 h-6 text-[#C7377A] shrink-0 mt-0.5" />
                 <div>
                   <h3 className="font-serif text-lg font-bold text-[#1C1916] dark:text-[#F3EEE6] mb-1">
-                    Accompany Privacy Charter
+                    Privacy information (draft)
                   </h3>
                   <p className="text-xs text-[#5E574F] dark:text-[#B7AFA3] leading-relaxed">
-                    We maintain strict confidentiality. Your personal identifiers are redacted and never disclosed to Listeners. We do not sell your personal data to third parties.
+                    This draft describes proposed privacy disclosures. Confirm the actual information collected, recipients, service providers, and retention before relying on it.
                   </p>
                 </div>
               </div>
@@ -360,7 +360,7 @@ export const TermsPage: React.FC = () => {
                 1. Introduction
               </h2>
               <p>
-                We take data security and privacy with critical importance. We maintain strong confidentiality and do not disclose user data except as described in this Privacy Policy or as required by law. In the Accompany App, Users and Listeners are in control and can decide what they wish to share and what they prefer to keep private.
+                Accompany processes information to operate accounts, profiles, conversations, calls, payments, support, and safety functions. The exact information, purposes, access, vendors, and retention periods must be checked against the live app and backend before this policy takes effect.
               </p>
               <p>
                 The Users’ right to privacy is of paramount importance to the Accompany community.
@@ -373,17 +373,15 @@ export const TermsPage: React.FC = () => {
                 2. Data Management & Minimal Retention
               </h2>
               <p>
-                Accompany stores data entered by the User in a secured, encrypted format to deter leakage or misuse. We only collect the basic minimum information required for registration and session routing (e.g. pseudonym nickname, age band, email ID).
+                The app may handle account and profile details, date of birth, messages, call metadata, location, reports, and payment records. Storage safeguards, data fields, and retention periods are not specified here until verified against the production systems.
               </p>
               <ul className="space-y-2 text-xs sm:text-sm list-disc list-inside">
                 <li>
-                  Any personal information on submitting a call or chat request is <strong>‘redacted’, ‘obscured’, and ‘censored’</strong> from external Listeners.
+                  The information visible to a conversation partner depends on the profile and interaction features. Confirm the fields exposed in the app before publication.
                 </li>
-                <li>We do not rent, sell, or trade User personal data with any third party, whatsoever.</li>
-                <li>We provide promotional announcements with an immediate option to opt-out at any time.</li>
-                <li>
-                  We do not collect sensitive medical data or financial passwords.
-                </li>
+                <li>Identify the service providers and other recipients that process user information and describe their roles accurately.</li>
+                <li>Describe any marketing messages and available preferences only after confirming how they work.</li>
+                <li>Users may include sensitive information in profiles or conversations; do not share financial credentials.</li>
               </ul>
             </section>
 
@@ -393,10 +391,10 @@ export const TermsPage: React.FC = () => {
                 3. Sharing of Data with Third Parties & Listeners
               </h2>
               <p>
-                Accompany does not share personal data with non-affiliates, except to provide the services specifically requested by the User.
+                Accompany may share information with service providers needed to operate the app, payment flows, hosting, analytics, support, and safety processes. The actual providers and purposes must be listed after verification.
               </p>
               <p>
-                Accompany provides Your redacted and censored pseudonym to verified Listeners who engage under strict confidentiality and non-disclosure contracts.
+                Profile details and information shared in a conversation may be visible to other users. Companion verification status and any contractual confidentiality commitments must be confirmed before making a specific representation.
               </p>
               <div className="p-5 rounded-2xl bg-[#FFFCF8] dark:bg-[#1C1A17] border border-[#E3DBD1] dark:border-[#3A342E] text-xs sm:text-sm space-y-2">
                 <div className="font-bold text-[#1C1916] dark:text-[#F3EEE6] flex items-center gap-2">
@@ -404,7 +402,7 @@ export const TermsPage: React.FC = () => {
                   <span>Statutory Disclosures & Harm Prevention</span>
                 </div>
                 <p className="text-[#5E574F] dark:text-[#B7AFA3]">
-                  Under Indian statutory law, Accompany is legally bound to disclose necessary information if requested by a competent law enforcement authority or court order in order to investigate or prevent illegal activities or fraud. Furthermore, if We reasonably believe that a User poses an immediate, serious threat of physical harm to themselves or others, We reserve the liberty to cooperate with competent authorities as permitted by law.
+                  Information may be disclosed when required by law or valid legal process. Any safety-related disclosure or escalation must follow a documented process and applicable law.
                 </p>
               </div>
             </section>
@@ -412,19 +410,18 @@ export const TermsPage: React.FC = () => {
             {/* Section 4 */}
             <section className="space-y-4">
               <h2 className="font-serif text-2xl font-bold tracking-tight text-[#1C1916] dark:text-[#F3EEE6] pt-2">
-                4. Quality, Safety Monitoring & AI Moderation
+                4. Safety Monitoring and Moderation
               </h2>
               <p>
-                To provide safe and supportive experiences, Accompany may analyze interactions (such as automated keyword safety filters) solely for:
+                The app's interaction monitoring and moderation practices are not confirmed in this draft. If enabled, the purposes, information processed, tools or providers involved, and retention must be described accurately here before publication.
               </p>
               <ul className="space-y-1.5 text-xs sm:text-sm list-disc list-inside text-[#5E574F] dark:text-[#B7AFA3]">
-                <li>Safety and community standards policy enforcement</li>
-                <li>Fraud prevention and financial security</li>
-                <li>Customer support dispute investigations</li>
-                <li>Improvement and maintenance of automated AI safety moderation systems</li>
+                <li>Confirm whether chat, call, or video content is reviewed or analyzed.</li>
+                <li>Confirm whether any AI provider receives user content or identifiers.</li>
+                <li>Document purposes, access controls, and retention before disclosing monitoring.</li>
               </ul>
               <p className="text-xs text-[#5E574F] dark:text-[#B7AFA3]">
-                All such moderation data is processed under strict confidentiality protocols.
+                Do not publish this section as a description of current behavior until those practices and safeguards are verified.
               </p>
             </section>
 
@@ -434,23 +431,23 @@ export const TermsPage: React.FC = () => {
                 5. Sensitive Personal Information
               </h2>
               <p>
-                Users and Listeners are urged not to share sensitive personal details or medical prescriptions. Accompany is not a clinical medical facilitator. Any voluntary disclosure during an Experience Sharing Interaction remains at the User's sole volition, and Accompany takes no responsibility for consensual disclosures between individuals.
+                Do not share sensitive details or medical prescriptions unless you are comfortable sharing them with the other participant. Accompany is not a clinical medical provider. Information shared in a conversation may be seen by the other participant; the platform's own access and handling practices must be confirmed and accurately disclosed.
               </p>
             </section>
 
             {/* Section 6 */}
             <section className="space-y-4">
               <h2 className="font-serif text-2xl font-bold tracking-tight text-[#1C1916] dark:text-[#F3EEE6] pt-2">
-                6. Payment Security (NPCI & RBI Compliance)
+                6. Payment Processing (Details to Be Confirmed)
               </h2>
               <p>
-                When purchasing coins or wallet packages, transactions are routed through certified payment gateways.
+                The payment provider and the payment-related information it receives must be identified and verified before publication.
               </p>
               <p className="font-semibold text-xs sm:text-sm text-[#29995C]">
-                We DO NOT RETAIN sensitive payment data (debit/credit card numbers, CVVs, expiry dates, OTPs, or UPI PINs).
+                Do not state which payment details Accompany or its providers retain until confirmed with the payment integration and provider terms.
               </p>
               <p className="text-xs text-[#5E574F] dark:text-[#B7AFA3]">
-                UPI PIN authentication is handled securely through the Common Library (CL) provided by the National Payments Corporation of India (NPCI).
+                Payment authentication and security responsibilities depend on the selected payment provider and must be described using its verified documentation.
               </p>
             </section>
 
@@ -463,7 +460,7 @@ export const TermsPage: React.FC = () => {
                 Our services are provided on an <strong>“AS IS”</strong> and <strong>“AS AVAILABLE”</strong> basis without warranties of merchantability, fitness for a particular purpose, or uninterrupted availability.
               </p>
               <p>
-                Subject to applicable laws, Accompany’s total liability for any claim arising out of the services shall not exceed the amount actually received and retained by Accompany from the User for the specific session in dispute.
+                Any limits on liability must be reviewed for compliance with applicable law and finalized in the approved terms. This draft does not establish a financial cap.
               </p>
             </section>
 
@@ -473,20 +470,56 @@ export const TermsPage: React.FC = () => {
                 8. Privacy Officer Contact
               </h2>
               <p className="text-xs text-[#5E574F] dark:text-[#B7AFA3]">
-                If you have questions, data access inquiries, or wish to delete your account, please reach our privacy team:
+                The contact route for privacy requests and account deletion must be confirmed and monitored before publication.
               </p>
               <div className="p-5 rounded-2xl bg-[#FFFCF8] dark:bg-[#1C1A17] border border-[#E3DBD1] dark:border-[#3A342E] text-xs space-y-1">
                 <div className="font-bold text-[#1C1916] dark:text-[#F3EEE6]">
-                  Data Protection & Privacy Officer
+                  Privacy contact (to be confirmed)
                 </div>
                 <div>
-                  Email:{' '}
-                  <a href="mailto:privacy@accompanyapp.in" className="text-[#C7377A] font-semibold">
-                    privacy@accompanyapp.in
-                  </a>{' '}
-                  / support@accompanyapp.in
+                  Email: contact details to be confirmed before publication.
                 </div>
               </div>
+            </section>
+          </div>
+        )}
+
+        {activeTab === 'community' && (
+          <div className="space-y-10 text-sm sm:text-base text-[#1C1916] dark:text-[#F3EEE6] leading-relaxed">
+            <div className="p-6 rounded-3xl bg-[#FDE4ED]/60 dark:bg-[#26131E] border border-[#C7377A]/20">
+              <div className="flex items-start gap-3.5">
+                <Users className="w-6 h-6 text-[#C7377A] shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-serif text-lg font-bold text-[#1C1916] dark:text-[#F3EEE6] mb-1">Keep Accompany respectful and conversation-focused</h3>
+                  <p className="text-xs text-[#5E574F] dark:text-[#B7AFA3]">These proposed rules apply to profiles, requests, chats, voice calls, and video calls. They remain a draft until the product controls and moderation process are confirmed.</p>
+                </div>
+              </div>
+            </div>
+
+            <section className="space-y-4">
+              <h2 className="font-serif text-2xl font-bold tracking-tight text-[#1C1916] dark:text-[#F3EEE6] pt-2">1. Treat people respectfully</h2>
+              <p>Do not harass, threaten, bully, stalk, discriminate against, or repeatedly contact someone who has declined interaction. Do not impersonate another person or misrepresent material information in a profile.</p>
+            </section>
+            <section className="space-y-4">
+              <h2 className="font-serif text-2xl font-bold tracking-tight text-[#1C1916] dark:text-[#F3EEE6] pt-2">2. Keep interactions on-platform</h2>
+              <p>Do not solicit or share phone numbers, personal email addresses, social handles, payment credentials, or other contact details to move an interaction off Accompany. Do not request or arrange in-person meetings or off-platform payments.</p>
+            </section>
+            <section className="space-y-4">
+              <h2 className="font-serif text-2xl font-bold tracking-tight text-[#1C1916] dark:text-[#F3EEE6] pt-2">3. No sexual exploitation, explicit content, or unlawful conduct</h2>
+              <p>Do not use the service to solicit sexual services, share or request non-consensual intimate content, exploit or endanger anyone, promote illegal activity, or share another person's private information without permission.</p>
+              <p>Accompany is intended for adults aged 18 or older. Do not involve minors in the service or share sexualized content involving anyone under 18.</p>
+            </section>
+            <section className="space-y-4">
+              <h2 className="font-serif text-2xl font-bold tracking-tight text-[#1C1916] dark:text-[#F3EEE6] pt-2">4. Use the service for conversation, not professional care</h2>
+              <p>Accompany conversations are not medical care, therapy, legal or financial advice, or emergency response. Do not present yourself as a licensed professional through Accompany unless the service explicitly verifies and supports that role.</p>
+            </section>
+            <section className="space-y-4">
+              <h2 className="font-serif text-2xl font-bold tracking-tight text-[#1C1916] dark:text-[#F3EEE6] pt-2">5. Reporting, blocking, and review</h2>
+              <p>Use the in-app block control to stop contact where available. A dedicated report flow, who reviews reports, escalation steps, response targets, and appeal process must be confirmed before this page promises those services. This draft does not guarantee a specific review time or outcome.</p>
+            </section>
+            <section className="space-y-4">
+              <h2 className="font-serif text-2xl font-bold tracking-tight text-[#1C1916] dark:text-[#F3EEE6] pt-2">6. Enforcement</h2>
+              <p>Accompany may review suspected rule violations and take proportionate action when supported by the product and operating process, subject to applicable law. The final policy must explain available actions, urgent safety handling, and any appeal route before it takes effect.</p>
             </section>
           </div>
         )}

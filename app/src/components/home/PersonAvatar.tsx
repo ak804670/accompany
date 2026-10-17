@@ -61,7 +61,7 @@ export function PersonAvatar({ userId, name, size = 64, wide = false, fill = fal
       <Pressable accessibilityRole="button" accessibilityLabel={`View ${name}'s profile photo`} onPress={() => setViewerOpen(true)}>
         {avatar}
       </Pressable>
-      <PhotoViewer uri={viewerOpen ? uri ?? (demo ? Image.resolveAssetSource(demo).uri : null) : null} onClose={() => setViewerOpen(false)} />
+      <PhotoViewer uri={viewerOpen ? uri ?? (demo ? Image.resolveAssetSource(demo)?.uri ?? null : null) : null} onClose={() => setViewerOpen(false)} />
     </>
   ) : avatar;
 }

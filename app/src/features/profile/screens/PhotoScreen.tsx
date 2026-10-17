@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, View, type ScrollViewInstance } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AppButton } from '@/components/design-system/AppButton';
@@ -33,7 +33,7 @@ export function PhotoScreen({ navigation }: Props) {
   const [frameHeight, setFrameHeight] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-  const scroller = useRef<ScrollView>(null);
+  const scroller = useRef<ScrollViewInstance | null>(null);
   const active = photos[index];
   const canAdd = photos.length < profileImageConfig.maxPhotos;
 

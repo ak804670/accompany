@@ -152,8 +152,9 @@ describe('Call Components', () => {
         </ThemeProvider>,
       );
 
-      expect(screen.getByText('Live Video Stream Active')).toBeOnTheScreen();
-      expect(screen.getByText('You')).toBeOnTheScreen();
+      expect(screen.getByText('Waiting for video…')).toBeOnTheScreen();
+      expect(screen.getByText('Starting camera…')).toBeOnTheScreen();
+      expect(screen.getByText('D')).toBeOnTheScreen();
     });
 
     it('renders camera off fallback when remote camera is turned off', async () => {

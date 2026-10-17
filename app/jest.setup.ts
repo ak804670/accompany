@@ -107,6 +107,26 @@ jest.mock('expo-system-ui', () => ({
   setBackgroundColorAsync: jest.fn(() => Promise.resolve()),
 }));
 
+jest.mock('expo-notifications', () => {
+  const actual = jest.requireActual<typeof import('expo-notifications')>('expo-notifications');
+  return {
+    ...actual,
+    setNotificationHandler: jest.fn(),
+  };
+});
+
+jest.mock('@livekit/react-native', () => {
+  const React = require('react') as typeof import('react');
+  const { View } = require('react-native') as typeof import('react-native');
+  return {
+    AudioSession: {
+      startAudioSession: jest.fn(),
+      stopAudioSession: jest.fn(),
+    },
+    VideoTrack: (props: Record<string, unknown>) => React.createElement(View, props),
+  };
+});
+
 jest.mock('expo-sqlite', () => ({
   openDatabaseAsync: jest.fn(async () => {
     throw new Error('sqlite unavailable in tests');

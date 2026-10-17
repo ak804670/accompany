@@ -26,7 +26,7 @@ export const Footer: React.FC = () => {
                 Someone is always ready to listen. Download Accompany.
               </h3>
               <p className="text-sm sm:text-base text-[#5E574F] dark:text-[#B7AFA3] leading-relaxed max-w-xl mb-6">
-                Connect in 30 seconds over 100% private audio, video, or chat. Real listeners, genuine empathy, zero judgment.
+                Connect through chat, audio, or video and find someone ready to listen.
               </p>
 
               {/* Action Buttons */}
@@ -84,7 +84,7 @@ export const Footer: React.FC = () => {
               </span>
             </Link>
             <p className="text-sm text-[#5E574F] dark:text-[#B7AFA3] leading-relaxed max-w-sm mb-6">
-              India's premier companionship and emotional support network. Safe, anonymous, and judgment-free conversations with empathetic companions 24 hours a day, 7 days a week.
+              A conversation and companionship service for adults. Accompany is not a medical, therapy, or emergency service.
             </p>
             <div className="flex items-center gap-2 text-xs font-semibold text-[#C7377A]">
               <Heart className="w-4 h-4 fill-current text-[#C7377A]" />
@@ -185,7 +185,7 @@ export const Footer: React.FC = () => {
             <strong className="text-[#1C1916] dark:text-[#F3EEE6]">Medical & Crisis Disclaimer:</strong> Accompany provides peer-to-peer emotional companionship, active listening, and wellness conversations. We are not a medical, psychiatric, or licensed clinical healthcare provider.
           </p>
           <p>
-            If you or someone you know is in acute danger, experiencing suicidal thoughts, or dealing with a mental health emergency, please immediately call national emergency helplines such as <strong>KIRAN (1800-599-0019)</strong> or <strong>Tele-MANAS (14416)</strong> in India.
+            If you or someone you know is in immediate danger or needs urgent medical care, contact local emergency services or a qualified professional in your area.
           </p>
         </div>
 
@@ -208,10 +208,10 @@ export const Footer: React.FC = () => {
               Terms of Service
             </Link>
             <Link
-              to="/terms?tab=terms"
+              to="/terms?tab=community"
               className="hover:text-[#C7377A] dark:hover:text-[#F3EEE6] transition-colors"
             >
-              Safety & Anonymity
+              Community Rules
             </Link>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { TextInput, View, type TextInputInstance } from 'react-native';
 
 import { AppButton } from '@/components/design-system/AppButton';
 import { AppText } from '@/components/design-system/AppText';
@@ -29,7 +29,7 @@ export function OtpInput({
   onResend,
   resending = false,
 }: OtpInputProps) {
-  const inputs = useRef<(TextInput | null)[]>([]);
+  const inputs = useRef<(TextInputInstance | null)[]>([]);
   const [remaining, setRemaining] = useState(resendAfter);
 
   useEffect(() => {

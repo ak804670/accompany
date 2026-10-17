@@ -6,6 +6,6 @@ describe('App', () => {
   it('renders the foundation screen', async () => {
     await render(<App />);
 
-    expect(await screen.findByText('Accompany')).toBeOnTheScreen();
+    expect(await screen.findByText('Set up your permissions')).toBeOnTheScreen();
   });
 });

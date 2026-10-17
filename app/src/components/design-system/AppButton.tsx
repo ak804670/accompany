@@ -89,6 +89,7 @@ export function AppButton({
   className,
   children,
   accessibilityState,
+  accessibilityLabel,
   ...props
 }: AppButtonProps) {
   const { resolvedScheme } = useTheme();
@@ -101,6 +102,7 @@ export function AppButton({
       variant={mapVariant(visualVariant)}
       size={mappedSize.size}
       disabled={isDisabled}
+      accessibilityLabel={accessibilityLabel ?? (typeof children === 'string' ? children : undefined)}
       accessibilityState={{
         ...accessibilityState,
         disabled: isDisabled,
